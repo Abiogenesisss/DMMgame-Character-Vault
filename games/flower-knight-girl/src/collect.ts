@@ -1,3 +1,4 @@
+import { renameFileSync, writeAtomicFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -46,8 +47,8 @@ async function collect(root, { roles, concurrency = 4, retryMissing = false, sco
   const stop = () => { stopping = true; };
   process.once('SIGINT', stop); process.once('SIGTERM', stop);
   const checkpoint = () => {
-    const temp = stateFile + '.tmp'; fs.writeFileSync(temp, JSON.stringify(state)); fs.renameSync(temp, stateFile);
-    fs.writeFileSync(absenceFile + '.tmp', JSON.stringify(unavailable)); fs.renameSync(absenceFile + '.tmp', absenceFile);
+    writeAtomicFileSync(stateFile, JSON.stringify(state));
+    writeAtomicFileSync(absenceFile, JSON.stringify(unavailable));
   };
   const flush = () => { saveManifest(pack.root, pack.manifest); sinceFlush = 0; checkpoint(); };
   const interval = setInterval(() => { checkpoint(); console.log(JSON.stringify({ phase: state.phase, checked: state.checked, targets: state.targets, stories: state.stories,
@@ -86,7 +87,7 @@ async function collect(root, { roles, concurrency = 4, retryMissing = false, sco
     }
     const body = Buffer.concat(chunks); validate(body);
     const digest = sha256(body), target = path.join(pack.root, 'bodies', digest);
-    if (!fs.existsSync(target)) { fs.writeFileSync(target + '.tmp', body); fs.renameSync(target + '.tmp', target); }
+    if (!fs.existsSync(target)) { fs.writeFileSync(target + '.tmp', body); renameFileSync(target + '.tmp', target); }
     const mimeType = response.headers.get('content-type') || 'application/octet-stream';
     const record = { url: item.url, method: 'GET', status: 200, body: digest, size: body.length,
       headers: [['content-type', mimeType]], mimeType, resourceType: 'fetch', range: '',

@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -115,7 +116,7 @@ export async function ensureStoryUi(root: string, { fetchResource = fetchPublicR
     // Publish only a complete export. The manifest is committed last.
     for (const file of files) {
       const target = path.join(root, 'library', file); fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.copyFileSync(path.join(output, file), target + '.tmp'); fs.renameSync(target + '.tmp', target);
+      fs.copyFileSync(path.join(output, file), target + '.tmp'); renameFileSync(target + '.tmp', target);
     }
     saveInstallation(root, files, 'game-server');
     const installed = readStoryUi(root);

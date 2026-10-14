@@ -1,3 +1,4 @@
+import { writeAtomicFileSync } from './atomic-file.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -26,7 +27,7 @@ async function fetchResource(url, options: RequestInit = {}) {
 function startJob(action, entries) {
   const release = acquirePackLock(root), file = path.join(root, 'state/workbench-job.json');
   const job: any = { id: randomUUID(), type: action, state: 'queued', started: new Date().toISOString() };
-  const persist = patch => { Object.assign(job, patch); fs.writeFileSync(file + '.tmp', JSON.stringify(job)); fs.renameSync(file + '.tmp', file); };
+  const persist = patch => { Object.assign(job, patch); writeAtomicFileSync(file, JSON.stringify(job)); };
   try { persist({}); } catch (error) { release(); throw error; }
   setImmediate(async () => {
     try {

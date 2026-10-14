@@ -1,3 +1,4 @@
+import { writeAtomicFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { ORIGIN, validId, resourceKind, decodeData } = require('./format.ts');
@@ -11,7 +12,7 @@ function voiceCategory(prefix, code) {
   return ['daily', '日常'];
 }
 const readJson = (file, fallback?: any) => fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : fallback;
-function writeJson(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file + '.tmp', JSON.stringify(value)); fs.renameSync(file + '.tmp', file); }
+function writeJson(file, value) { writeAtomicFileSync(file, JSON.stringify(value)); }
 function bundleUrl(internalId, source) {
   let url;
   if (/^rlp\/[a-f0-9]{32}\.bundle$/.test(internalId)) url = source.remoteBase + internalId.slice(4);

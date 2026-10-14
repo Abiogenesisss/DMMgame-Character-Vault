@@ -1,3 +1,4 @@
+import { writeAtomicFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { downloadUrls } = require('../../../app/download.ts');
@@ -29,7 +30,7 @@ async function collect(root, { roles, scope = 'all', retryMissing = false, fetch
   const unavailable = fs.existsSync(absentFile) ? JSON.parse(fs.readFileSync(absentFile, 'utf8')) : {};
   const targets = queue.filter(spec => retryMissing || !unavailable[spec.url]), absent = new Set<string>();
   const state = { state: 'running', scope, roles, targets: targets.length, checked: 0, saved: 0, skipped: 0, failed: 0, unavailable: queue.length - targets.length, started: new Date().toISOString(), pid: process.pid };
-  const persist = () => { fs.writeFileSync(file + '.tmp', JSON.stringify(state)); fs.renameSync(file + '.tmp', file); };
+  const persist = () => writeAtomicFileSync(file, JSON.stringify(state));
   persist();
   try {
     const result = targets.length ? await downloadUrls(root, targets, { maxBytes: 32 * 1024 * 1024,
@@ -43,7 +44,7 @@ async function collect(root, { roles, scope = 'all', retryMissing = false, fetch
       onProgress: progress => { Object.assign(state, { checked: progress.done, saved: progress.saved, skipped: progress.skipped, failed: progress.failed }); persist(); }
     }) : { saved: 0, skipped: 0, failed: 0, errors: [], done: 0 };
     const errors = result.errors.filter(error => !absent.has(error.url));
-    fs.writeFileSync(absentFile + '.tmp', JSON.stringify(unavailable)); fs.renameSync(absentFile + '.tmp', absentFile);
+    writeAtomicFileSync(absentFile, JSON.stringify(unavailable));
     const index = extract(root, undefined, { roles, scope });
     const issues = index.issues.filter(issue => roles.includes(issue.character));
     const placeholders = index.characters.filter(character => roles.includes(character.id)).reduce((total, character) => total + character.placeholders.filter(item => scope === 'all' || item.category === scope).length, 0);

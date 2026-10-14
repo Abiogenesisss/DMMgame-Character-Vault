@@ -24,7 +24,7 @@ async function fetchPublicResource(input, { signal, headers = {} }: any = {}) {
   const hostname = url.hostname.replace(/^\[|\]$/g, '');
   const addresses = net.isIP(hostname) ? [{ address: hostname, family: net.isIP(hostname) }] : await dns.lookup(hostname, { all: true });
   if (!addresses.length || addresses.some(item => !isPublicAddress(item.address))) throw new Error('资源 URL 需要指向公网地址。');
-  return new Promise((resolve, reject) => {
+  return new Promise<Response>((resolve, reject) => {
     const request = (url.protocol === 'https:' ? https : http).request(url, {
       method: 'GET', agent: false, signal, headers: { ...Object.fromEntries(new Headers(headers)), 'accept-encoding': 'identity' },
       // Pin the validated addresses for this connection; do not resolve the host again.

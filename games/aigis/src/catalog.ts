@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { loadPack, routeKey, sha256 } = require('../../../app/pack.ts');
@@ -70,7 +71,7 @@ async function readRarityMetadata(root, fetchResource) {
   const chunks = []; let size = 0;
   for await (const chunk of response.body) { size += chunk.length; if (size > 16 * 1024 * 1024) throw new Error('稀有度资料超出大小限制。'); chunks.push(chunk); }
   const units = valid(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))));
-  fs.writeFileSync(file + '.tmp', JSON.stringify(units)); fs.renameSync(file + '.tmp', file); return units;
+  fs.writeFileSync(file + '.tmp', JSON.stringify(units)); renameFileSync(file + '.tmp', file); return units;
 }
 async function prepareCatalog(root, { fetchResource = fetchPublicResource }: any = {}) {
   const sourceFile = path.join(root, 'metadata/source.json'), listFile = path.join(root, 'metadata/filelist.txt');

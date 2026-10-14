@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -68,12 +69,12 @@ async function collectPortraits(root, { roles, retryMissing = false, fetchResour
     if (!extension) throw new Error('立绘不是有效的图片。');
     const target = path.join(root, 'library/images', record.body + '.' + extension);
     fs.mkdirSync(path.dirname(target), { recursive: true });
-    if (!fs.existsSync(target)) { fs.writeFileSync(target + '.tmp', bytes); fs.renameSync(target + '.tmp', target); }
+    if (!fs.existsSync(target)) { fs.writeFileSync(target + '.tmp', bytes); renameFileSync(target + '.tmp', target); }
     delete unavailable[spec.url]; exported++;
   }
   if (targets.length) {
     fs.mkdirSync(path.dirname(absenceFile), { recursive: true });
-    fs.writeFileSync(absenceFile + '.tmp', JSON.stringify(unavailable)); fs.renameSync(absenceFile + '.tmp', absenceFile);
+    fs.writeFileSync(absenceFile + '.tmp', JSON.stringify(unavailable)); renameFileSync(absenceFile + '.tmp', absenceFile);
   }
   if (exported || relink) {
     selectRoles(root, roles, catalog, 'portraits');

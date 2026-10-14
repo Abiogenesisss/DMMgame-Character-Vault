@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -111,7 +112,7 @@ function cachedVoiceRows(manifest, types) {
 }
 function writeJson(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file + '.tmp', JSON.stringify(value)); fs.renameSync(file + '.tmp', file);
+  fs.writeFileSync(file + '.tmp', JSON.stringify(value)); renameFileSync(file + '.tmp', file);
 }
 function ensureVoiceMapping(root, { manifest = loadPack(path.join(root, 'cache')).manifest, write = true }: any = {}) {
   const file = path.join(root, 'metadata/voice-map.json');

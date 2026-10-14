@@ -1,3 +1,4 @@
+import { writeAtomicFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -43,7 +44,7 @@ function createService({ root, origin, fetchResource }) {
       let release;
       try { release = acquirePackLock(root); } catch (error) { return response({ error: '其他资源正在收集或保存，请等当前任务完成。' }, 409); }
       const file = path.join(root, 'state/flower-status.json');
-      const save = state => { fs.writeFileSync(file + '.tmp', JSON.stringify(state)); fs.renameSync(file + '.tmp', file); };
+      const save = state => writeAtomicFileSync(file, JSON.stringify(state));
       const initial = { state: 'running', roles: [payload.id], scope, voicesOnly: scope === 'voices', phase: COLLECTION_SCOPES[scope].phase, targets: 0, checked: 0, stories: 0, failed: 0, pid: process.pid };
       try { save(initial); }
       catch (error) { release(); throw error; }

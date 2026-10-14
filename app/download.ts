@@ -1,3 +1,4 @@
+import { renameFileSync } from './atomic-file.ts';
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -87,7 +88,7 @@ async function downloadUrls(root, entries, { fetchResource = fetchPublicResource
         if (validate) await validate(fs.readFileSync(temporary), entry);
         const target = path.join(pack.root, 'bodies', digest);
         // Replace a corrupted previous blob as well as saving new content.
-        fs.renameSync(temporary, target);
+        renameFileSync(temporary, target);
         const mimeType = response.headers.get('content-type') || 'application/octet-stream';
         const record = { url: entry.url, method: 'GET', status: 200, body: digest, size,
           headers: [['content-type', mimeType]], mimeType, resourceType: 'fetch',

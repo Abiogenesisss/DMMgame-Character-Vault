@@ -1,3 +1,4 @@
+import { writeAtomicFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { downloadUrls } = require('../../../app/download.ts');
@@ -25,7 +26,7 @@ async function collect(root, { roles, scope = 'all', retryMissing = false, fetch
   const status = path.join(directory, 'otogi-status.json'), absentFile = path.join(directory, 'otogi-unavailable.json'), unavailable = readJson(absentFile, {});
   const absent = new Set<string>(), targets = queue.filter(spec => retryMissing || !unavailable[spec.url]);
   const state = { state: 'running', scope, roles, targets: targets.length, checked: 0, saved: 0, skipped: 0, failed: 0, unavailable: queue.length - targets.length, started: new Date().toISOString(), pid: process.pid };
-  const persist = () => { fs.writeFileSync(status + '.tmp', JSON.stringify(state)); fs.renameSync(status + '.tmp', status); }; persist();
+  const persist = () => writeAtomicFileSync(status, JSON.stringify(state)); persist();
   try {
     const result = targets.length ? await downloadUrls(root, targets, { maxBytes: 80 * 1024 * 1024,
       fetchResource: async (url, options) => {
@@ -34,7 +35,7 @@ async function collect(root, { roles, scope = 'all', retryMissing = false, fetch
         else if (response.status === 200) delete unavailable[url]; return response;
       }, validate: async bytes => decodeBundle(bytes, await require('./prepare.ts').ensureCodec(root, bytes, { fetchResource })), onProgress: progress => { Object.assign(state, { checked: progress.done, saved: progress.saved, skipped: progress.skipped, failed: progress.failed }); persist(); }
     }) : { saved: 0, skipped: 0, failed: 0, errors: [], done: 0 };
-    fs.writeFileSync(absentFile, JSON.stringify(unavailable));
+    writeAtomicFileSync(absentFile, JSON.stringify(unavailable));
     const index = await extractResources(root, undefined, { roles, scope }), issues = index.issues.filter(issue => roles.includes(issue.character)), errors = [...result.errors.filter(error => !absent.has(error.url)), ...scripts.errors];
     Object.assign(state, { state: errors.length || issues.length ? 'partial' : 'ready', checked: result.done, saved: result.saved, skipped: result.skipped, unavailable: state.unavailable + absent.size,
       failed: errors.length + issues.length, errors: [...errors, ...issues], stats: index.stats, finished: new Date().toISOString() }); persist(); return state;

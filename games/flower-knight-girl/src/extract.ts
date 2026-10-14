@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -10,7 +11,7 @@ const { ensureVoiceMapping, roleVoiceSpecs, syncCachedVoices } = require('./char
 const { wantsDependency } = require('./collection-scope.ts');
 const { mergeCharacterName } = require('./character-metadata.ts');
 // A download may rebuild files while another tab is already reading them.
-function saveFile(file, bytes) { fs.writeFileSync(file + '.tmp', bytes); fs.renameSync(file + '.tmp', file); }
+function saveFile(file, bytes) { fs.writeFileSync(file + '.tmp', bytes); renameFileSync(file + '.tmp', file); }
 const upsert = (items, item) => {
   const previous = items.find(entry => entry.id === item.id);
   if (previous) { Object.assign(previous, item); return previous; }
@@ -186,7 +187,7 @@ function extract(root, progress: (...args: any[]) => any = () => {}, { scope = '
     icons: index.images.filter(item => item.category === 'icon').length, issues: index.issues.length };
   index.generated = new Date().toISOString();
   if (voiceMapping) syncCachedVoices(root, { mapping: voiceMapping, index, persist: false });
-  const file = path.join(out, 'index.json'); fs.writeFileSync(file + '.tmp', JSON.stringify(index)); fs.renameSync(file + '.tmp', file);
+  const file = path.join(out, 'index.json'); fs.writeFileSync(file + '.tmp', JSON.stringify(index)); renameFileSync(file + '.tmp', file);
   progress({ state: 'ready', message: '花骑士内容索引已更新。', stats: index.stats });
   return { state: 'ready', message: '花骑士内容索引已更新。', stats: index.stats };
 }

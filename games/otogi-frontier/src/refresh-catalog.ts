@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { downloadUrls } = require('../../../app/download.ts');
@@ -25,7 +26,7 @@ async function refreshCatalog(root, { ids = [], fetchResource = fetchPublicResou
   catalog.characters.push(...old.values()); catalog.characters.sort((a, b) => Number(a.id) - Number(b.id));
   catalog.aliases = { ...previous.aliases, ...catalog.aliases };
   fs.writeFileSync(path.join(root, 'metadata/catalog.json.tmp'), JSON.stringify(catalog));
-  fs.renameSync(path.join(root, 'metadata/catalog.json.tmp'), path.join(root, 'metadata/catalog.json'));
+  renameFileSync(path.join(root, 'metadata/catalog.json.tmp'), path.join(root, 'metadata/catalog.json'));
   const saved = new Map<any, any>(library.characters.map(character => [character.id, character]));
   const needsIcons = catalog.characters.some(character => !saved.get(character.id)?.icon);
   let icons = { saved: 0, errors: [], failed: 0 };

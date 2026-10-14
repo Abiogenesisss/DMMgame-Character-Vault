@@ -1,3 +1,4 @@
+import { writeAtomicFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { acquirePackLock } = require('../../../app/projects.ts');
@@ -34,7 +35,7 @@ function createDiscoveryService({ root, origin, refreshCharacters, fetchResource
     try { release = acquirePackLock(root); } catch { return json({ error: '当前游戏正在处理资源，请等任务完成后再拉取新角色。' }, 409); }
     const file = path.join(root, 'state', STATUS_FILE);
     const state = { state: 'running', type: 'catalog', scope: 'catalog', phase: 'catalog', roles: [], targets: 0, checked: 0, failed: 0, pid: process.pid, started: new Date().toISOString() };
-    const save = patch => { Object.assign(state, patch); fs.writeFileSync(file + '.tmp', JSON.stringify(state)); fs.renameSync(file + '.tmp', file); };
+    const save = patch => { Object.assign(state, patch); writeAtomicFileSync(file, JSON.stringify(state)); };
     try { save({}); } catch (error) { release(); throw error; }
     const initial = { ...state };
     Promise.resolve().then(async () => {

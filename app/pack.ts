@@ -1,3 +1,4 @@
+import { writeAtomicFileSync } from './atomic-file.ts';
 'use strict';
 
 const fs = require('node:fs');
@@ -48,8 +49,7 @@ function saveManifest(directory, manifest) {
   fs.mkdirSync(directory, { recursive: true });
   updateStats(manifest);
   const file = path.join(directory, 'manifest.json');
-  fs.writeFileSync(file + '.tmp', JSON.stringify(manifest));
-  fs.renameSync(file + '.tmp', file);
+  writeAtomicFileSync(file, JSON.stringify(manifest));
   return manifest;
 }
 

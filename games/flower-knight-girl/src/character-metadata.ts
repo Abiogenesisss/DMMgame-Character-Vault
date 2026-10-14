@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { sha256 } = require('../../../app/pack.ts');
@@ -51,6 +52,6 @@ async function ensureCharacterMetadata(root, { refresh = false, fetchResource = 
   const source = revision?.slots?.main?.['*'] || revision?.slots?.main?.content || revision?.['*'];
   if (typeof source !== 'string' || !parseCharacterMetadata(source).length) throw new Error('花骑士角色表没有有效的可玩角色。');
   const file = path.join(root, 'metadata/flower-wiki-master.lua'); fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file + '.tmp', source); fs.renameSync(file + '.tmp', file); return readCharacterMetadata(root);
+  fs.writeFileSync(file + '.tmp', source); renameFileSync(file + '.tmp', file); return readCharacterMetadata(root);
 }
 export { SOURCE, parseCharacterMetadata, readCharacterMetadata, ensureCharacterMetadata, mergeCharacterName };

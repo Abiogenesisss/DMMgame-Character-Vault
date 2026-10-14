@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { ensureCharacterMetadata } = require('./character-metadata.ts');
@@ -28,7 +29,7 @@ async function refreshCatalog(root, { refresh = false, ids = [], fetchResource =
     const bytes = decode(fs.readFileSync(path.join(pack.root, 'bodies', record.body))), extension = sniffImage(bytes);
     if (!extension) continue;
     const file = 'images/' + record.body + '.' + extension, target = path.join(root, 'library', file);
-    if (!fs.existsSync(target)) { fs.writeFileSync(target + '.tmp', bytes); fs.renameSync(target + '.tmp', target); }
+    if (!fs.existsSync(target)) { fs.writeFileSync(target + '.tmp', bytes); renameFileSync(target + '.tmp', target); }
     additionalImages.push({ id: record.body, name: new URL(spec.url).pathname.split('/').at(-1), file, category: 'icon', bytes: bytes.length });
   }
   const updated = targets.length ? buildCatalog(root) : catalog;

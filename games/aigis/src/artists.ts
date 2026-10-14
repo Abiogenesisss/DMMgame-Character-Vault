@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { fetchPublicResource } = require('../../../app/public-fetch.ts');
@@ -67,14 +68,14 @@ async function readArtistMetadata(root, fetchResource = fetchPublicResource, { r
   if (!script) throw new Error('画师资料入口未找到。');
   const metadata = validateMetadata({ ...parseArtistMetadata(await read(script.href, 16 * 1024 * 1024)), bundleUrl: script.href, fetched: new Date().toISOString() });
   const file = path.join(root, 'metadata/artist-metadata.json'); fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file + '.tmp', JSON.stringify(metadata)); fs.renameSync(file + '.tmp', file); return metadata;
+  fs.writeFileSync(file + '.tmp', JSON.stringify(metadata)); renameFileSync(file + '.tmp', file); return metadata;
 }
 if (require.main === module) (async () => {
   const root = require('./paths.ts').root;
   const metadata = await readArtistMetadata(root, fetchPublicResource, { refresh: process.argv.includes('--refresh') });
   await require('../../../app/projects.ts').withPackLock(root, async () => {
     const catalog = attachArtists(require('./catalog.ts').readCatalog(root), metadata), file = path.join(root, 'metadata/catalog.json');
-    fs.writeFileSync(file + '.tmp', JSON.stringify(catalog)); fs.renameSync(file + '.tmp', file);
+    fs.writeFileSync(file + '.tmp', JSON.stringify(catalog)); renameFileSync(file + '.tmp', file);
     const index = require('./extract.ts').extract(root, undefined, { roles: [] });
     console.log(JSON.stringify({ characters: index.characters.filter(character => character.artists?.length).length,
       artists: new Set<string>(index.characters.flatMap(character => character.artists || [])).size, unknown: index.characters.filter(character => !character.artists?.length).length }));

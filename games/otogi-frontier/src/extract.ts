@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { loadPack, routeKey, sha256 } = require('../../../app/pack.ts');
@@ -74,7 +75,7 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
   index.stats = { characters: index.characters.length, icons: index.characters.filter(character => character.icon).length, collected: index.characters.filter(character => character.collected).length,
     portraits: index.characters.reduce((sum, character) => sum + character.portraits.length, 0), cg: index.characters.reduce((sum, character) => sum + character.cg.length, 0) + index.skeletons.length, dynamicCg: index.skeletons.length, audio: index.audio.length, stories: index.stories.length, issues: index.issues.length };
   index.generated = new Date().toISOString(); fs.mkdirSync(output, { recursive: true });
-  fs.writeFileSync(path.join(output, 'index.json.tmp'), JSON.stringify(index)); fs.renameSync(path.join(output, 'index.json.tmp'), path.join(output, 'index.json'));
+  fs.writeFileSync(path.join(output, 'index.json.tmp'), JSON.stringify(index)); renameFileSync(path.join(output, 'index.json.tmp'), path.join(output, 'index.json'));
   progress({ state: 'ready', message: '童话边境资源库已更新。', stats: index.stats }); return index;
 }
 if (require.main === module) {

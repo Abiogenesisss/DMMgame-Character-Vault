@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { loadPack, routeKey, sha256 } = require('../../../app/pack.ts');
@@ -15,7 +16,7 @@ function extract(root, progress: (...args: any[]) => any = () => {}, { roles, sc
   const good = spec => pack.manifest.routes[routeKey('GET', spec.url)]?.findLast(record => record.status === 200 && fs.existsSync(path.join(pack.root, 'bodies', record.body)));
   function exportImage(raw, frame, metadata) {
     const bytes = png(raw, frame), id = sha256(bytes), file = 'images/' + id + '.png', target = path.join(out, file);
-    if (!fs.existsSync(target)) { fs.writeFileSync(target + '.tmp', bytes); fs.renameSync(target + '.tmp', target); }
+    if (!fs.existsSync(target)) { fs.writeFileSync(target + '.tmp', bytes); renameFileSync(target + '.tmp', target); }
     if (!imageIds.has(id)) { imageIds.add(id); index.images.push({ id, file, width: frame.width, height: frame.height, bytes: bytes.length, ...metadata }); }
     return file;
   }
@@ -84,7 +85,7 @@ function extract(root, progress: (...args: any[]) => any = () => {}, { roles, sc
     collected: index.characters.filter(character => character.collected).length,
     portraits: index.characters.reduce((total, character) => total + character.portraits.length, 0),
     cg: index.characters.reduce((total, character) => total + character.cg.length, 0), issues: index.issues.length };
-  index.generated = new Date().toISOString(); fs.writeFileSync(indexFile + '.tmp', JSON.stringify(index)); fs.renameSync(indexFile + '.tmp', indexFile);
+  index.generated = new Date().toISOString(); fs.writeFileSync(indexFile + '.tmp', JSON.stringify(index)); renameFileSync(indexFile + '.tmp', indexFile);
   // Delete only excluded exports with canonical filenames, and retain any file
   // still shared by a valid portrait, icon or CG. Raw archives stay untouched.
   for (const file of excludedFiles) if (/^images\/[a-f0-9]{64}\.png$/.test(file) && !referencedFiles.has(file)) fs.rmSync(path.join(out, file), { force: true });

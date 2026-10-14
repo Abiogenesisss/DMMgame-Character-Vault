@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs=require('node:fs'),path=require('node:path');
 const {loadPack,routeKey,sha256}=require('../../../app/pack.ts');
@@ -142,7 +143,7 @@ async function extract(root,progress: (...args: any[]) => any=()=>{},{roles,scop
     story.complete=story.expectedSegments.length===story.segments.length&&!story.missingAssets.length&&!story.program.missing?.length&&Object.values<any>(story.audio).every(a=>a.file)&&Object.values<any>(story.actors).every(a=>a.file);
     const file='stories/'+story.id+'.json';writeJson(path.join(output,file),story);
     const script=story.segments.length===1?saved(story.address).script.file:'scripts/'+story.id+'-complete.txt';
-    if(story.segments.length>1){fs.mkdirSync(path.join(output,'scripts'),{recursive:true});fs.writeFileSync(path.join(output,script)+'.tmp',story.segments.map(address=>fs.readFileSync(path.join(output,saved(address).script.file),'utf8')).join('\n'));fs.renameSync(path.join(output,script)+'.tmp',path.join(output,script));}
+    if(story.segments.length>1){fs.mkdirSync(path.join(output,'scripts'),{recursive:true});fs.writeFileSync(path.join(output,script)+'.tmp',story.segments.map(address=>fs.readFileSync(path.join(output,saved(address).script.file),'utf8')).join('\n'));renameFileSync(path.join(output,script)+'.tmp',path.join(output,script));}
     const metadata={id:story.id,title:story.title,character:story.character,characters:[story.character],file,script,scriptFormat:'txt',format:'dotabyss',hasCg:story.hasCg,complete:story.complete,segments:story.segments.length,programVersion:2,adult:story.adult,dialogue:story.program.dialogue,voiceFiles:[...new Set(Object.values<any>(story.audio).filter(a=>a.cue&&a.file).map(a=>a.file))]};
     index.stories.push(metadata);for(const character of index.characters)if(story.character===character.id){character.stories.push(story.id);character.collected=true;}
   }

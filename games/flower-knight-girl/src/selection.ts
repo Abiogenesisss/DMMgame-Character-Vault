@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -38,6 +39,6 @@ function selectRoles(root, roles, catalog, scope = 'all') {
   const file = path.join(root, 'state/flower-selected.json');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file + '.tmp', JSON.stringify({ version: 2, characters: [...scopes.keys()], scopes: Object.fromEntries([...scopes].map(([id, values]) => [id, values.has('all') ? ['all'] : [...values]])), updated: new Date().toISOString() }));
-  fs.renameSync(file + '.tmp', file);
+  renameFileSync(file + '.tmp', file);
 }
 export { readSelection, readScopes, selectRoles };

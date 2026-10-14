@@ -1,3 +1,4 @@
+import { writeAtomicFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { acquirePackLock } = require('../../../app/projects.ts');
@@ -20,7 +21,7 @@ function createService({ root, origin, fetchResource }) {
       if (!catalog.characters.some(character => character.id === id)) return json({ error: '角色未被索引。' }, 404);
       let release; try { release = acquirePackLock(root); } catch { return json({ error: '童话边境资源正在处理，请等当前任务完成。' }, 409); }
       const initial = { state: 'running', roles: [id], scope, targets: 0, checked: 0, failed: 0, pid: process.pid };
-      const save = state => { fs.writeFileSync(file + '.tmp', JSON.stringify(state)); fs.renameSync(file + '.tmp', file); };
+      const save = state => writeAtomicFileSync(file, JSON.stringify(state));
       try { save(initial); } catch (error) { release(); throw error; }
       Promise.resolve().then(async () => {
         try { await collect(root, { roles: [id], scope, retryMissing: payload.retryMissing === true, fetchResource }); }

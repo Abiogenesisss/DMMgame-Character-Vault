@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -93,7 +94,7 @@ function migrateCharacterForms(root, { catalog, additionalImages = [] }: any = {
   // Only legacy collected roles absent from the selection need that fallback.
   selectRoles(root, index.characters.filter(character => character.collected && !selected.has(character.id)).map(character => character.id), index);
   fs.writeFileSync(indexFile + '.tmp', JSON.stringify(index));
-  fs.renameSync(indexFile + '.tmp', indexFile);
+  renameFileSync(indexFile + '.tmp', indexFile);
   return { characters: index.characters.length, collected: index.characters.filter(character => character.collected).length,
     portraits: index.characters.reduce((total, character) => total + character.portraits.filter(item => item.file).length, 0),
     stories: index.stories.length };

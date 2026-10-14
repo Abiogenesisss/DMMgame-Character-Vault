@@ -1,3 +1,4 @@
+import { writeAtomicFileSync } from './atomic-file.ts';
 'use strict';
 const http = require('node:http');
 const fs = require('node:fs');
@@ -52,7 +53,7 @@ function createServer({ dataRoot = DEFAULT_DATA, gamesRoot = DEFAULT_GAMES, fetc
     const file = path.join(project.root, 'state/workbench-job.json');
     const persist = patch => {
       Object.assign(job, patch);
-      fs.writeFileSync(file + '.tmp', JSON.stringify(job)); fs.renameSync(file + '.tmp', file);
+      writeAtomicFileSync(file, JSON.stringify(job));
     };
     try { persist({}); } catch (error) { release(); throw error; }
     Promise.resolve().then(async () => {

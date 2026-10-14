@@ -1,9 +1,10 @@
+import { writeAtomicFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { ORIGIN, resourceKind, validId } = require('./format.ts');
 const { parseAddressables } = require('./addressables.ts');
 const readJson = (file, fallback) => fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : fallback;
-function writeJson(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file + '.tmp', JSON.stringify(value)); fs.renameSync(file + '.tmp', file); }
+function writeJson(file, value) { writeAtomicFileSync(file, JSON.stringify(value)); }
 function buildAssets(locations, source) {
   const byId = new Map<any, any>(locations.map(item => [item.id, item])), assets = {}, conflicts = new Set<string>();
   function bundles(item, seen = new Set<string>()) {

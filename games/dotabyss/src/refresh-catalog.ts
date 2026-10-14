@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { createHash } = require('node:crypto');
@@ -49,7 +50,7 @@ async function refreshCatalog(root, { ids = [], fetchResource = fetchPublicResou
   const originals = files.map(file => fs.existsSync(file) ? fs.readFileSync(file) : null);
   try {
     fs.mkdirSync(analysis, { recursive: true });
-    fs.writeFileSync(binaryFile + '.tmp', bytes); fs.renameSync(binaryFile + '.tmp', binaryFile);
+    fs.writeFileSync(binaryFile + '.tmp', bytes); renameFileSync(binaryFile + '.tmp', binaryFile);
     writeJson(path.join(analysis, 'catalog.json'), catalog); writeJson(sourceFile, source);
     if (roles.length) {
       const state = await collectResources(root, { roles, scope: 'catalog', fetchResource, onProgress: progress => onProgress({ ...progress, phase: 'icons' }) });
@@ -60,7 +61,7 @@ async function refreshCatalog(root, { ids = [], fetchResource = fetchPublicResou
     return result;
   } catch (error) {
     files.forEach((file, index) => {
-      if (originals[index]) { fs.writeFileSync(file + '.tmp', originals[index]); fs.renameSync(file + '.tmp', file); }
+      if (originals[index]) { fs.writeFileSync(file + '.tmp', originals[index]); renameFileSync(file + '.tmp', file); }
       else if (fs.existsSync(file)) fs.unlinkSync(file);
     });
     throw error;

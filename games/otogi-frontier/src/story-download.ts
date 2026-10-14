@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { fetchPublicResource } = require('../../../app/public-fetch.ts');
@@ -29,7 +30,7 @@ async function downloadStories(root, catalog, roles, { fetchResource = fetchPubl
         const chunks = []; let size = 0;
         for await (const chunk of response.body) { size += chunk.length; if (size > 8 * 1024 * 1024) throw new Error('剧情脚本超出大小限制。'); chunks.push(chunk); }
         const data = validateSource(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))), source.scene, source.kind);
-        fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file + '.tmp', JSON.stringify(data)); fs.renameSync(file + '.tmp', file); state.saved++;
+        fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file + '.tmp', JSON.stringify(data)); renameFileSync(file + '.tmp', file); state.saved++;
       }
     } catch (error) { state.errors.push({ character: source.character, scene: source.scene, error: error.message }); }
     state.checked++; onProgress(state);

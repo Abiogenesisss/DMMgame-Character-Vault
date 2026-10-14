@@ -1,3 +1,4 @@
+import { renameFileSync } from '../../../app/atomic-file.ts';
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const { BASE, validId } = require('./format.ts');
@@ -82,7 +83,7 @@ function writeStories(root, index, catalog) {
   for (const { spec, story, source } of current) {
     bindStory(story, index, catalog); const folder = path.join(root, 'library/stories'); fs.mkdirSync(folder, { recursive: true });
     for (const [name, data] of [[spec.id + '.json', story], [spec.id + '.source.json', source]]) {
-      const file = path.join(folder, name); fs.writeFileSync(file + '.tmp', JSON.stringify(data)); fs.renameSync(file + '.tmp', file);
+      const file = path.join(folder, name); fs.writeFileSync(file + '.tmp', JSON.stringify(data)); renameFileSync(file + '.tmp', file);
     }
     const metadata = { id: spec.id, character: spec.character, parent: spec.character, chapter: spec.chapter, scene: spec.scene, title: spec.title,
       file: 'stories/' + spec.id + '.json', script: 'stories/' + spec.id + '.source.json', scriptFormat: 'json', dialogue: story.dialogue,
