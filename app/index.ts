@@ -17,8 +17,8 @@ function createRegistry(gamesRoot = DEFAULT_GAMES) {
       const root = path.resolve(gamesRoot, folder.name), manifest = path.join(root, 'game.json');
       try {
         const data = JSON.parse(fs.readFileSync(manifest, 'utf8'));
-        if (data.id !== folder.name || typeof data.name !== 'string' || typeof data.label !== 'string' || !fs.existsSync(path.join(root, 'index.ts'))) continue;
-        const files = ['game.json', 'index.ts', 'dist/module.js'].map(file => { try { const stat = fs.statSync(path.join(root, file)); return stat.mtimeMs + ':' + stat.size; } catch { return 'missing'; } });
+        if (data.id !== folder.name || typeof data.name !== 'string' || typeof data.label !== 'string' || !fs.existsSync(path.join(root, 'src/index.ts'))) continue;
+        const files = ['game.json', 'src/index.ts', 'dist/module.js'].map(file => { try { const stat = fs.statSync(path.join(root, file)); return stat.mtimeMs + ':' + stat.size; } catch { return 'missing'; } });
         entries.push({ id: data.id, name: data.name, label: data.label, root, revision: files.join('-'), stylesheet: fs.existsSync(path.join(root, 'viewer/styles.css')) });
       } catch { /* Incomplete directories do not disable other installed games. */ }
     }
@@ -30,7 +30,7 @@ function createRegistry(gamesRoot = DEFAULT_GAMES) {
     const entry = list().find(entry => entry.id === id); if (!entry) return null;
     if (loaded.get(id)?.revision !== entry.revision) {
       forget(id);
-      const adapter: GameAdapter = require(path.join(entry.root, 'index.ts'));
+      const adapter: GameAdapter = require(path.join(entry.root, 'src/index.ts'));
       if (typeof adapter.createService !== 'function') throw new Error('游戏服务入口无效：' + id);
       loaded.set(id, { ...entry, adapter });
     }

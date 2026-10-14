@@ -1,5 +1,5 @@
 'use strict';
-const common=require('./content.ts');
+const contentHelpers=require('./content.ts');
 const validId=value=>typeof value==='string'&&/^1\d{8}$/.test(value);
 function prepareLibrary(library){
   if(library.rosterVersion===1)return library;
@@ -28,12 +28,12 @@ function readFavorites(value,library){try{const values=JSON.parse(value||'[]');r
 function readRoute(hash,library){const [tab,id,section]=String(hash||'').replace(/^#/,'').split('/');return {tab:['characters','favorites'].includes(tab)?tab:'characters',id:['characters','favorites'].includes(tab)&&validId(id)?library?.aliases?.[id]||id:null,section:['stories','voices'].includes(section)?section:'presentation'};}
 function catalogCharacters(library,filter: any={}){
   const query=String(filter.query||'').trim().toLowerCase();
-  return common.catalogCharacters(library,{...filter,query:''}).filter(c=>!query||[c.name,c.id,c.releaseUnconfirmed?'未实装 实装待确认':'',...(c.skins||[]).flatMap(s=>[s.id,s.name])].join(' ').toLowerCase().includes(query));
+  return contentHelpers.catalogCharacters(library,{...filter,query:''}).filter(c=>!query||[c.name,c.id,c.releaseUnconfirmed?'未实装 实装待确认':'',...(c.skins||[]).flatMap(s=>[s.id,s.name])].join(' ').toLowerCase().includes(query));
 }
 function roleContent(library,character){
-  const content=common.roleContent(library,character),ids=new Set<string>(character.memberIds||[character.id]),skinLabels=new Map<any, any>((character.skins||[]).map(s=>[s.id,s.label]));
+  const content=contentHelpers.roleContent(library,character),ids=new Set<string>(character.memberIds||[character.id]),skinLabels=new Map<any, any>((character.skins||[]).map(s=>[s.id,s.label]));
   return {...content,stories:content.stories.filter(story=>story.hasCg===true).map(story=>skinLabels.has(story.character)?{...story,title:skinLabels.get(story.character)+' · '+story.title}:story),
     voices:(library.audio||[]).filter(item=>ids.has(item.character)&&item.context==='character'&&item.file),
     motions:(library.skeletons||[]).filter(item=>ids.has(item.character)&&item.kind==='cg'&&item.file).map(item=>skinLabels.has(item.character)?{...item,label:skinLabels.get(item.character)+' · 动态 CG'}:item)};
 }
-export ={...common,prepareLibrary,catalogCharacters,readFavorites,readRoute,roleContent};
+export ={...contentHelpers,prepareLibrary,catalogCharacters,readFavorites,readRoute,roleContent};

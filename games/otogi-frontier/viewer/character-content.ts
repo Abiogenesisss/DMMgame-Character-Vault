@@ -1,5 +1,5 @@
 'use strict';
-const { canonicalId } = require('../identity.ts');
+const { canonicalId } = require('../src/identity.ts');
 function catalogCharacters(library, { tab = 'characters', favorites = new Set<string>(), query = '', availability = 'all', rarity = 'all', dynamicOnly = false }: any = {}) {
   const search = query.trim().toLowerCase();
   return (library.characters || []).filter(character => (tab !== 'favorites' || favorites.has(character.id)) && (!dynamicOnly || character.hasDynamicCg)

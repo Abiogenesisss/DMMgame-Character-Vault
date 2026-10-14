@@ -2,6 +2,7 @@
   "name": "webgame-resource-workspace",
   "version": "0.2.0",
   "private": true,
+  "license": "MIT",
   "description": "Local character resource and story viewer for DMM games",
   "engines": {
     "node": ">=22"

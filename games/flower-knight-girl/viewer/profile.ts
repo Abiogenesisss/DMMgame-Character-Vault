@@ -77,4 +77,4 @@ export ={...{
     "stories",
     "voices"
   ]
-},...content,rarities:require('../character-types.ts').RARITIES,scopes:require('../collection-scope.ts').COLLECTION_SCOPES};
+},...content,rarities:require('../src/character-types.ts').RARITIES,scopes:require('../src/collection-scope.ts').COLLECTION_SCOPES};

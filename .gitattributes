@@ -11,6 +11,7 @@
 .gitattributes text eol=lf
 .gitignore text eol=lf
 *.txt text eol=lf
+LICENSE text eol=lf
 # Bundled third-party shaders preserve their original string whitespace.
 games/*/dist/module.js -whitespace
 app/viewer/app.js -whitespace

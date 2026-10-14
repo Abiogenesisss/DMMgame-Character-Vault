@@ -57,4 +57,4 @@ export ={...{
       "label": "配套语音"
     }
   }
-},...content,rarities:require('../rarity.ts').RARITIES};
+},...content,rarities:require('../src/rarity.ts').RARITIES};

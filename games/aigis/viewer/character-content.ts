@@ -1,6 +1,6 @@
 'use strict';
-const { canonicalId } = require('../character-identity.ts');
-const { isGamePortrait } = require('../portraits.ts');
+const { canonicalId } = require('../src/character-identity.ts');
+const { isGamePortrait } = require('../src/portraits.ts');
 const { characterArtists, matchesArtist } = require('../../../app/viewer/artists.ts');
 function portraitStatus(character) {
   const saved = (character.portraits || []).filter(item => item.file && isGamePortrait(item));

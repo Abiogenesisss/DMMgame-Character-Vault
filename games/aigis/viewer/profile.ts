@@ -58,4 +58,4 @@ export ={...{
       "label": "CG"
     }
   }
-},...content,readRoute:(hash,library)=>({...content.readRoute(hash,library),section:'presentation'}),routeHash:(tab,id,section='presentation')=>'#'+tab+(id?'/'+id+'/'+section:''),roleContent:(library,character)=>({portraits:(character.portraits||[]).filter(item=>item.file&&require('../portraits.ts').isGamePortrait(item)),cg:(character.cg||[]).filter(item=>item.file),stories:[],voices:[],motions:[]}),rarities:require('../rarity.ts').RARITIES};
+},...content,readRoute:(hash,library)=>({...content.readRoute(hash,library),section:'presentation'}),routeHash:(tab,id,section='presentation')=>'#'+tab+(id?'/'+id+'/'+section:''),roleContent:(library,character)=>({portraits:(character.portraits||[]).filter(item=>item.file&&require('../src/portraits.ts').isGamePortrait(item)),cg:(character.cg||[]).filter(item=>item.file),stories:[],voices:[],motions:[]}),rarities:require('../src/rarity.ts').RARITIES};

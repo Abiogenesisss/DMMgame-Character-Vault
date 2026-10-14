@@ -381,7 +381,7 @@ function renderRole(character) {
   updateFavorite();
   $('role-skins').replaceChildren(); $('role-skins').hidden = !skins.length;
   if (skins.length) {
-    $('role-skins').append(element('span', 'dotabyss-skins-label', '角色皮肤'));
+    $('role-skins').append(element('span', 'role-skins-label', '角色皮肤'));
     for (const skin of skins) {
       const button = element('button', 'secondary-button', skin.label + (skin.collected ? ' · 更新资源' : ' · 下载资源'));
       button.type = 'button'; button.dataset.skinId = skin.id; button.addEventListener('click', () => getCharacter(skin.id, 'all'));

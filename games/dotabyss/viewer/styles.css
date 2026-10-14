@@ -40,4 +40,4 @@
 .dotabyss-text-overlay{position:absolute;inset:18% 10%;color:#fff;display:grid;place-items:center;font-size:calc(42*var(--native-unit));text-shadow:0 2px 3px #000;white-space:pre-wrap;text-align:center;pointer-events:none}
 @media(max-width:620px){#story-dialog[data-story-engine=dotabyss]{width:calc(100vw - 12px)}.dotabyss-reader-footer{min-height:42px;padding-top:10px;gap:12px}.dotabyss-reader-footer .dotabyss-control{width:30px;height:30px}.dotabyss-stage{outline-width:3px;box-shadow:0 0 0 5px #45255c}}
 
-.dotabyss-skins{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}.dotabyss-skins-label{margin-right:8px;color:var(--muted);font-size:13px}
+.dotabyss-skins{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}.role-skins-label{margin-right:8px;color:var(--muted);font-size:13px}

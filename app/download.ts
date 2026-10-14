@@ -43,8 +43,9 @@ async function intact(pack, record, entry) {
   return hash.digest('hex') === record.body;
 }
 
-async function downloadUrls(root, entries, { fetchResource = fetchPublicResource, onProgress = () => {}, maxBytes = 1024 ** 3, validate, refresh = false, concurrency = 1 }: any = {}) {
+async function downloadUrls(root, entries, { fetchResource = fetchPublicResource, onProgress = () => {}, maxBytes = 1024 ** 3, validate, refresh = false, concurrency = 1, timeoutMs = 300000 }: any = {}) {
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 8) throw new Error('下载并发数需要在 1 至 8 之间。');
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 1800000) throw new Error('下载超时需要在 1 毫秒至 30 分钟之间。');
   const pack = loadPack(path.join(root, 'cache'));
   const state = { state: 'downloading', total: entries.length, done: 0, saved: 0, skipped: 0, failed: 0, bytes: 0, errors: [] };
   onProgress({ ...state });
@@ -62,7 +63,7 @@ async function downloadUrls(root, entries, { fetchResource = fetchPublicResource
       else {
         let response;
         for (let attempt = 0; attempt < 3; attempt++) {
-          try { response = await fetchResource(entry.url, { redirect: 'error', signal: AbortSignal.timeout(60000) }); }
+          try { response = await fetchResource(entry.url, { redirect: 'error', signal: AbortSignal.timeout(timeoutMs) }); }
           catch (error) { if (attempt === 2) throw error; continue; }
           if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 2) break;
           await response.body?.cancel();

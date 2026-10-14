@@ -2,7 +2,7 @@
 
 const CATALOG_PAGES = ['characters', 'favorites'];
 const CHARACTER_SECTIONS = ['presentation', 'stories', 'voices'];
-const { baseId } = require('../character-identity.ts');
+const { baseId } = require('../src/character-identity.ts');
 const humanPortraits = character => (character.portraits || []).filter(item => item.phase !== 'flower' && !/^2\d{5}$/.test(item.character || ''));
 const ownedBy = (item, character, library) => [item.parent, item.character, ...(item.characters || [])]
   .some(id => baseId(id, library) === character.id);

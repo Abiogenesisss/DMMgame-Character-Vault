@@ -33,7 +33,7 @@ function readScene(story, commandIndex, models, images = []) {
   const modelFile = story.resources?.[reference];
   const model = reference ? models.find(item => modelFile && (item.file === modelFile || item.engine==='video'&&item.tracks?.some(t=>t.file===modelFile)) || item.name === reference.split('/').at(-1)) || null : null;
   const scene: { image: any; fallbackImage: any; model: any; placement: any; animation: string; loop: boolean; token: any; actors?: any[]; music?: string; sound?: { file: string; token: number }; transition?: { kind: string; token: number } } = { image: model ? null : file, fallbackImage: file, model, placement, animation, loop, token };
-  if (['otogi', 'muvluv', 'dotabyss', 'girlscreation'].includes(story.format)) Object.assign(scene, { actors: model ? [] : actors.map(actor => ({ ...actor, file: story.resources?.[actor.reference] || null })),
+  if (story.format === 'otogi') Object.assign(scene, { actors: model ? [] : actors.map(actor => ({ ...actor, file: story.resources?.[actor.reference] || null })),
     music: music ? story.resources?.[music] || null : null, sound: sound ? { ...sound, file: story.resources?.[sound.reference] || null } : null, transition });
   return scene;
 }
