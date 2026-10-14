@@ -4,14 +4,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { spawn } = require('node:child_process');
-const { loadPack, safeLabel, sha256 } = require('./pack.ts');
+const { loadPack, sha256 } = require('./pack.ts');
 const { DEFAULT_DATA, projectPath, readProject, createProject, listProjects, acquirePackLock, listResources } = require('./projects.ts');
-const { parseUrlList, downloadUrls } = require('./download.ts');
+const { parseUrlList } = require('./download.ts');
 const { fetchPublicResource } = require('./public-fetch.ts');
 const { sendFile } = require('./http-files.ts');
 const { createRegistry, DEFAULT_GAMES } = require('./index.ts');
 const { initializeGameData } = require('./initialize.ts');
 const lock = require('./download-lock.ts');
+const { createBackgroundTasks } = require('./background.ts');
 
 const identity = { app: 'webgame-resource-workspace', workspace: sha256(Buffer.from(path.resolve(__dirname, '..'))) };
 const json = (res, data, status = 200) => { res.writeHead(status, {
@@ -44,7 +45,7 @@ function createServer({ dataRoot = DEFAULT_DATA, gamesRoot = DEFAULT_GAMES, fetc
       return { id, adapter: id, name: game.name, root: projectPath(id, dataRoot) };
     }
   }
-  const jobs = new Map(); const adapterServices = new Map();
+  const background = createBackgroundTasks(fetchResource), adapterServices = new Map();
   function startJob(project, type, work) {
     const release = acquirePackLock(project.root);
     const job = { id: randomUUID(), type, state: 'queued', started: new Date().toISOString() };
@@ -54,7 +55,6 @@ function createServer({ dataRoot = DEFAULT_DATA, gamesRoot = DEFAULT_GAMES, fetc
       fs.writeFileSync(file + '.tmp', JSON.stringify(job)); fs.renameSync(file + '.tmp', file);
     };
     try { persist({}); } catch (error) { release(); throw error; }
-    jobs.set(project.id, job);
     Promise.resolve().then(async () => {
       try { const result = await work(persist); persist({ ...result, finished: new Date().toISOString() }); }
       catch (error) { persist({ state: 'failed', error: error.message, finished: new Date().toISOString() }); }
@@ -109,7 +109,7 @@ function createServer({ dataRoot = DEFAULT_DATA, gamesRoot = DEFAULT_GAMES, fetc
         }
         if (action === 'job' && req.method === 'GET') {
           const file = path.join(project.root, 'state/workbench-job.json');
-          const job = jobs.get(project.id) || (fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null);
+          const job = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
           if (job && ['queued', 'downloading', 'importing', 'extracting'].includes(job.state)
             && !lock.busy(path.join(project.root, 'state/pack.lock'))) job.state = 'interrupted';
           json(res, job); return;
@@ -123,13 +123,12 @@ function createServer({ dataRoot = DEFAULT_DATA, gamesRoot = DEFAULT_GAMES, fetc
           let entries;
           try { entries = parseUrlList(await readJson(req, 64 * 1024 ** 2)); }
           catch (error) { error.status ||= 400; throw error; }
-          json(res, startJob(project, 'download', progress => downloadUrls(project.root, entries, { fetchResource,
-            onProgress: state => progress({ ...state, errors: state.errors.slice(0, 30).map(item => ({ ...item, url: safeLabel(item.url) })) }) })), 202); return;
+          json(res, await background.run(project, registry.get(project.adapter), 'download', entries), 202); return;
         }
         if (action === 'extract' && req.method === 'POST') {
           const adapter = getAdapter(project.adapter);
           if (typeof adapter?.extract !== 'function') throw fail('此项目没有配置解包适配器。');
-          json(res, startJob(project, 'extract', progress => adapter.extract(project.root, progress)), 202); return;
+          json(res, await background.run(project, registry.get(project.adapter), 'extract'), 202); return;
         }
         if (action.startsWith('files/') && ['GET', 'HEAD'].includes(req.method)) {
           const pack = loadPack(path.join(project.root, 'cache'));
@@ -155,13 +154,16 @@ function createServer({ dataRoot = DEFAULT_DATA, gamesRoot = DEFAULT_GAMES, fetc
           const discovery = relative === 'api/discover';
           const serviceKey = discovery ? key + '|discover' : key;
           if (discovery && !adapter.createDiscoveryService) throw fail('这款游戏暂不支持拉取新角色。', 400);
-          if (!adapterServices.has(serviceKey)) adapterServices.set(serviceKey, discovery
-            ? adapter.createDiscoveryService({ root: project.root, origin, fetchResource })
-            : adapter.createService({ root: project.root, origin, fetchResource }));
-          const service = adapterServices.get(serviceKey);
           const payload = req.method === 'POST' ? JSON.stringify(await readJson(req, 8192)) : undefined;
           const request = new Request(origin + '/' + relative + url.search, { method: req.method, headers: req.headers, body: payload });
-          const response = await service.handle(request);
+          let response;
+          if (req.method === 'POST') response = await background.handle(project, game, request, discovery);
+          else {
+            if (!adapterServices.has(serviceKey)) adapterServices.set(serviceKey, discovery
+              ? adapter.createDiscoveryService({ root: project.root, origin, fetchResource })
+              : adapter.createService({ root: project.root, origin, fetchResource }));
+            response = await adapterServices.get(serviceKey).handle(request);
+          }
           if (!response) throw fail('接口不存在。', 404);
           res.writeHead(response.status, Object.fromEntries(response.headers)); res.end(Buffer.from(await response.arrayBuffer())); return;
         }
@@ -184,6 +186,7 @@ function createServer({ dataRoot = DEFAULT_DATA, gamesRoot = DEFAULT_GAMES, fetc
     }
   });
   server.requestTimeout = 10 * 60 * 1000;
+  server.on('close', () => background.close());
   return server;
 }
 

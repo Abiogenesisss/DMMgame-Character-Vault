@@ -3,6 +3,7 @@ parsed-data/
 /.tools/
 /har/
 /games/dotabyss/story-ui/
+/games/muvluv-ggx/story-ui/
 __pycache__/
 *.pyc
 *.har

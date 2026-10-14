@@ -35,7 +35,7 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
     requests.push({ address, kind, internalId: spec.internalId, type: spec.type, ...input });
   }
   for (const character of catalog.characters.filter(item => !roles || roles.includes(item.id))) {
-    if (character.icon) queue(character.icon, 'icons');
+    if (scope !== 'ui' && character.icon) queue(character.icon, 'icons');
     if (['all', 'portraits'].includes(scope)) character.portraits.forEach(address => queue(address, 'portraits'));
     if (['all', 'cg', 'motions'].includes(scope)) { if (scope !== 'motions') character.cg.forEach(address => queue(address, 'cg')); character.motions.forEach(address => queue(address, 'motions')); }
     if (['all', 'voices'].includes(scope)) character.voices.forEach(voice => queue(voice.address, 'voices'));
@@ -59,7 +59,9 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
   function saved(address) {
     const value = cache[address]; if (!intact(value)) return null;
     const expected = source(address)?.fingerprint;
-    if (!expected || value.fingerprint !== expected) return null;
+    // Clearing raw downloads does not remove already exported, intact media.
+    // Replace it only when a newly available source proves that it changed.
+    if (expected && value.fingerprint !== expected) return null;
     return value;
   }
   const knownImage = (address, character, category) => {
@@ -88,7 +90,7 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
       cgAvailable: character.cg.length + character.motions.length > 0, voiceAvailable: character.voices.length > 0,
       storyAvailable: catalog.scenes.some(scene => scene.character === character.id), collected: !!(portraits.length || cg.length || motions.length || index.audio.some(audio => audio.character === character.id)), stories: [] });
   }
-  const storyUi=require('./story-ui.ts').installStoryUi(output);index.storyUi=storyUi;
+  const storyUi=require('./story-ui.ts').readStoryUi(root);index.storyUi=storyUi;
   for (const scenario of cachedStories(root, catalog)) {
     for (const address of scenario.assets) {
       const value = saved(address); const file = value?.image?.file || value?.audio?.file || value?.model?.file;
@@ -98,7 +100,8 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
     }
     scenario.models=Object.fromEntries(scenario.assets.flatMap(address=>saved(address)?.model?[[address,saved(address).model]]:[]));
     scenario.icons=Object.fromEntries(catalog.characters.flatMap(role=>{const icon=saved(role.icon)?.image?.file;return icon?[[role.portraitResourceId||role.resourceId,icon]]:[];}));
-    scenario.ui=storyUi.file;scenario.missingAssets=scenario.assets.filter(address=>!saved(address));
+    scenario.ui=storyUi?.file||null;scenario.missingAssets=scenario.assets.filter(address=>!saved(address));
+    if(!storyUi)scenario.missingAssets.push('GameUi/Scenario');
     scenario.complete=scenario.segments.length===scenario.expectedSegments.length&&!scenario.missingAssets.length;
     const file = 'stories/' + scenario.id + '.json', script = 'stories/' + scenario.id + '.source.json';
     writeJson(path.join(output, file), scenario);
@@ -106,7 +109,7 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
     const metadata = { id: scenario.id, title: scenario.title || '已保存剧情', character: scenario.character, characters: [scenario.character], file, script, scriptFormat: 'json', format: 'muvluv', adult: scenario.adult,hasCg:true,programVersion:2,complete:scenario.complete,segments:scenario.segments.length,
       dialogue: scenario.commands.filter(command => command.command === 'mess').length, voiceFiles: Object.values<any>(scenario.voices) };
     index.stories.push(metadata);
-    for (const character of index.characters) if (scenario.character===character.id) { character.stories.push(scenario.id); character.storyAvailable = true; }
+    for (const character of index.characters) if (scenario.character===character.id) { character.stories.push(scenario.id); character.storyAvailable = true; character.collected = true; }
   }
   for (const issue of issues) {
     const character = catalog.characters.find(role => [role.icon, ...role.portraits, ...role.cg, ...role.motions, ...role.voices.map(voice => voice.address)].includes(issue.resource))?.id;

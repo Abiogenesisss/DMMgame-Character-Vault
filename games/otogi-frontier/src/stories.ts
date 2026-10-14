@@ -81,12 +81,17 @@ function writeStories(root, index, catalog) {
   index.stories ||= [];
   for (const { spec, story, source } of current) {
     bindStory(story, index, catalog); const folder = path.join(root, 'library/stories'); fs.mkdirSync(folder, { recursive: true });
-    fs.writeFileSync(path.join(folder, spec.id + '.json'), JSON.stringify(story)); fs.writeFileSync(path.join(folder, spec.id + '.source.json'), JSON.stringify(source));
+    for (const [name, data] of [[spec.id + '.json', story], [spec.id + '.source.json', source]]) {
+      const file = path.join(folder, name); fs.writeFileSync(file + '.tmp', JSON.stringify(data)); fs.renameSync(file + '.tmp', file);
+    }
     const metadata = { id: spec.id, character: spec.character, parent: spec.character, chapter: spec.chapter, scene: spec.scene, title: spec.title,
       file: 'stories/' + spec.id + '.json', script: 'stories/' + spec.id + '.source.json', scriptFormat: 'json', dialogue: story.dialogue,
       voiceSaved: Object.values<any>(story.voices).filter(Boolean).length, voiceTotal: Object.keys(story.voices).length, complete: story.sourceComplete, motions: index.skeletons.filter(item => item.character === spec.character && item.scene === spec.scene).map(item => item.id) };
     const before = index.stories.findIndex(item => item.id === spec.id); if (before < 0) index.stories.push(metadata); else index.stories[before] = metadata;
   }
-  for (const character of index.characters) character.stories = index.stories.filter(story => story.character === character.id).map(story => story.id);
+  for (const character of index.characters) {
+    character.stories = index.stories.filter(story => story.character === character.id).map(story => story.id);
+    if (character.stories.length) character.collected = true;
+  }
 }
 export { API, storySources, sourceFile, validateSource, normalizeStory, cachedStories, bindStory, writeStories };

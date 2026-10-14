@@ -2,20 +2,20 @@
 import hashlib
 import json
 import pathlib
+import os
 import sys
+import warnings
 
 from window_export import WindowExporter, ref, components, graph, transform
 import UnityPy
+from UnityPy.exceptions import UnityVersionFallbackWarning
 from PIL import Image
+
+UnityPy.config.FALLBACK_UNITY_VERSION = os.environ.get('MUVLUV_UNITY_VERSION', '6000.0.0f1')
+warnings.filterwarnings('ignore', category=UnityVersionFallbackWarning)
 
 
 class Exporter(WindowExporter):
-    def save(self, name, data):
-        target = self.output / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
-        return 'story-ui/muvluv/' + name
-
     def font(self, obj):
         name = obj.peek_name()
         if name in self.fonts:
@@ -67,7 +67,7 @@ class Exporter(WindowExporter):
 
 def main():
     request = json.load(sys.stdin)
-    writer = Exporter(request['output'], {})
+    writer = Exporter(pathlib.Path(request['output']) / 'story-ui/muvluv', {})
     result = {'version': 1, 'game': 'muvluv-ggx', 'frame': {'width': 1920, 'height': 1080}, 'views': {}, 'fonts': {}}
     for item in request['assets']:
         name = item['address'].split('/')[-1]

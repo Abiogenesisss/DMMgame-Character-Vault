@@ -36,7 +36,9 @@ export class StoryScene{
     for(const layer of layers){const image=el('img','dotabyss-actor-layer');image.src=this.player.asset(layer.file);image.alt='';Object.assign(image.style,{left:px(layer.x),top:px(layer.y),width:px(layer.width),height:px(layer.height)});body.append(image);actor.layers.push({...layer,el:image});}
     this.actors.set(id,actor);this.face(actor);this.place(actor);return actor;
   }
-  place(actor,duration=0,instant=true){return this.player.animate(actor.el,{left:px(960+actor.x),top:px(540-actor.y),transform:`scale(${actor.scale*.5})`},duration,instant);}
+  // Exported layers already include their prefab transforms. --native-unit
+  // handles viewport scaling; only the script's charascale belongs here.
+  place(actor,duration=0,instant=true){return this.player.animate(actor.el,{left:px(960+actor.x),top:px(540-actor.y),transform:`scale(${actor.scale})`},duration,instant);}
   face(actor){for(const layer of actor.layers){const match=/\/FaceContent\/([^/]+)(\/Closed)?$/.exec(layer.name),pose=/\/Pose(\d+)?\//.exec(layer.name);let show=layer.active;if(match)show=match[1]===actor.face&&(actor.closed?!!match[2]||!actor.layers.some(l=>l.name===layer.name+'/Closed'):!match[2]);if(pose&&n(pose[1])!==actor.pose)show=false;layer.el.hidden=!show;}}
   target(type,id?: any){if(type==='CHARA')return this.actors.get(id)?.el;if(type==='SUBIMAGE'||type==='EFFECT')return this.images.get(id)?.el;if(type==='BACK')return this.player.back;return this.player.camera;}
   async image(id,resource,{hidden=false,effect=false,opacity=1}: any={}){const file=this.player.story.resources[resource];if(!file)return null;this.images.get(id)?.el.remove();const image=el('img','dotabyss-scene-image');image.src=this.player.asset(file);image.alt='';image.hidden=hidden;Object.assign(image.style,{left:'0',top:'0',width:'100%',height:'100%',objectFit:effect?'contain':'cover',opacity:String(Math.max(0,Math.min(1,opacity)))});(effect?this.effects:this.imagesRoot).append(image);this.images.set(id,{el:image,x:0,y:0,sx:1,sy:1});return image;}

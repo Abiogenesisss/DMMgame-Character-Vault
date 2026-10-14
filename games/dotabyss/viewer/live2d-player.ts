@@ -1,4 +1,6 @@
 import * as PIXI from 'pixi.js';
+// Each game has its own Pixi bundle; enable the CSP-safe shader path here too.
+import '@pixi/unsafe-eval';
 import { NativeMotionState } from './motion-state.ts';
 import { DotabyssMaterialRenderer } from './material-renderer.ts';
 

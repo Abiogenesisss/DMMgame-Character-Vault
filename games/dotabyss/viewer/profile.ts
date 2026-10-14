@@ -32,7 +32,8 @@ export ={...{
       "label": "本体立绘"
     },
     "cg": {
-      "label": "CG"
+      "label": "CG",
+      "savedFrom": ["cg", "motions"]
     },
     "motions": {
       "label": "动态 CG"

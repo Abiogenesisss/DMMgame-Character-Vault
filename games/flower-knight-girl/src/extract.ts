@@ -9,6 +9,8 @@ const { spinePlacement } = require('../viewer/reader-scene.ts');
 const { ensureVoiceMapping, roleVoiceSpecs, syncCachedVoices } = require('./character-voices.ts');
 const { wantsDependency } = require('./collection-scope.ts');
 const { mergeCharacterName } = require('./character-metadata.ts');
+// A download may rebuild files while another tab is already reading them.
+function saveFile(file, bytes) { fs.writeFileSync(file + '.tmp', bytes); fs.renameSync(file + '.tmp', file); }
 const upsert = (items, item) => {
   const previous = items.find(entry => entry.id === item.id);
   if (previous) { Object.assign(previous, item); return previous; }
@@ -118,7 +120,7 @@ function extract(root, progress: (...args: any[]) => any = () => {}, { scope = '
     if (!skeleton.skeleton || !skeleton.animations) throw new Error('Invalid Spine skeleton');
     const folderName = 'cg-' + specs[0].name;
     const folder = path.join(out, 'spine', folderName); fs.mkdirSync(folder, { recursive: true });
-    fs.writeFileSync(path.join(folder, 'skeleton.json'), JSON.stringify(skeleton));
+    saveFile(path.join(folder, 'skeleton.json'), JSON.stringify(skeleton));
     let atlas = bytes(records[1]).toString('utf8').replace(/\r\n/g, '\n');
     const pageNames = [...atlas.matchAll(/^([^\n]+\.(?:png|webp))\n(?=size:)/gm)].map(match => match[1]);
     if (pageNames.length !== records.length - 2) throw new Error('Spine atlas texture count mismatch');
@@ -127,9 +129,9 @@ function extract(root, progress: (...args: any[]) => any = () => {}, { scope = '
       const data = bytes(records[i + 2]), extension = sniffImage(data);
       if (!extension) throw new Error('Spine texture is not an image');
       const filename = pageNames[i].replace(/\.(png|webp)$/, '.' + extension);
-      atlas = atlas.replace(pageNames[i], filename); fs.writeFileSync(path.join(folder, filename), data);
+      atlas = atlas.replace(pageNames[i], filename); saveFile(path.join(folder, filename), data);
     }
-    fs.writeFileSync(path.join(folder, 'skeleton.atlas'), atlas);
+    saveFile(path.join(folder, 'skeleton.atlas'), atlas);
     const previous = index.skeletons.find(item => item.id === md5(reference));
     const model = { id: md5(reference), name: specs[0].name, character, characters: [...new Set([...(previous?.characters || []), ...(previous?.character ? [previous.character] : []), character])], kind: 'cg', placement,
       file: `spine/${folderName}/skeleton.json`, animations: Object.keys(skeleton.animations), version: skeleton.skeleton.spine };
@@ -170,8 +172,8 @@ function extract(root, progress: (...args: any[]) => any = () => {}, { scope = '
         complete: missing.length === 0 && story.issues.length === 0,
         missing: missing.length, issues: story.issues.length };
       story.audio = Object.fromEntries([...assets].filter(([, item]) => item.category === 'voice' || item.category === 'music').map(([url, item]) => [url, item.file]));
-      fs.writeFileSync(path.join(out, metadata.file), JSON.stringify(story));
-      fs.writeFileSync(path.join(out, metadata.script), bytes(record));
+      saveFile(path.join(out, metadata.file), JSON.stringify(story));
+      saveFile(path.join(out, metadata.script), bytes(record));
       upsert(index.stories, metadata);
       const character = characters.get(metadata.parent);
       if (character) { character.stories ||= []; if (!character.stories.includes(metadata.id)) character.stories.push(metadata.id); }

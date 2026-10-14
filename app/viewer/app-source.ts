@@ -41,7 +41,7 @@ let projects = [], currentSession, gameGeneration = 0, favorites = new Set<strin
 const audition = $('role-voice-player');
 let catalogState;
 let library, tab = 'characters', limit = 72, selectedRole = null, roleSection = 'presentation', selectedVoiceFile = null;
-let searchTimer, toastTimer, polling, collectionRunning = false, collectionJob = null;
+let searchTimer, toastTimer, polling, statusGeneration = 0, collectionRunning = false, collectionJob = null;
 let preview, previewGeneration = 0, storyReader, storyGeneration = 0;
 let inlineModel = null, inlinePlayer, motionGeneration = 0, inlineFailed = false;
 let portraitModel = null, portraitPlayer, portraitGeneration = 0, portraitFailed = false;
@@ -535,7 +535,8 @@ function updateGetButtons() {
     const scope = button.dataset.downloadScope, label = currentSession?.profile.scopes[scope]?.label;
     if (!label) { button.hidden = true; return; }
     button.hidden = false;
-    const saved = scope === 'all' ? selectedRole?.collected : resources?.[scope]?.length || scope === 'cg' && combinedCg() && resources?.motions.length;
+    const savedFrom = currentSession.profile.scopes[scope].savedFrom || [scope];
+    const saved = scope === 'all' ? selectedRole?.collected : savedFrom.some(kind => resources?.[kind]?.length) || scope === 'cg' && combinedCg() && resources?.motions.length;
     button.disabled = collectionRunning || !selectedRole || scope === 'cg' && (currentSession.profile.features.rarity || currentSession.profile.requireCgAvailability) && !selectedRole.cgAvailable
       || scope === 'motions' && selectedRole.cgAvailable === false || scope === 'voices' && selectedRole.voiceAvailable === false;
     if (scope === 'stories' && selectedRole?.storyAvailable === false) button.disabled = true;
@@ -547,6 +548,7 @@ function updateGetButtons() {
 }
 async function getCharacter(id, scope = 'all') {
   if (collectionRunning || !currentSession.profile.scopes[scope]) return;
+  clearTimeout(polling); statusGeneration++;
   const session = currentSession, generation = gameGeneration; session.collection.begin();
   collectionRunning = true; collectionJob = { roles: [id], scope }; updateGetButtons();
   try {
@@ -597,22 +599,25 @@ $('story-dialog').addEventListener('close',()=>{storyGeneration++;storyReader?.d
 
 async function loadLibrary(session = currentSession) {
   if (!session) return;
-  const generation = gameGeneration;
+  const generation = gameGeneration, request = session.libraryRequest = (session.libraryRequest || 0) + 1;
   const response = await fetch(session.path + 'library/index.json', { cache: 'no-store' });
+  let nextLibrary;
   if (response.status === 404) {
-    session.library = { characters: [], images: [], audio: [], stories: [], skeletons: [] };
+    nextLibrary = { characters: [], images: [], audio: [], stories: [], skeletons: [] };
   } else {
     if (!response.ok) throw new Error(session.profile.label + '内容库还未生成。');
-    session.library = await response.json();
+    nextLibrary = await response.json();
   }
+  if (request !== session.libraryRequest) return false;
+  session.library = nextLibrary;
   if (session.profile.prepareLibrary) session.library = session.profile.prepareLibrary(session.library);
   const previous = JSON.stringify([...session.favorites]);
   session.favorites = session.profile.readFavorites(previous, session.library);
   if (JSON.stringify([...session.favorites]) !== previous) {
     try { localStorage.setItem(session.profile.favoriteKey, JSON.stringify([...session.favorites])); } catch {}
   }
-  if (generation !== gameGeneration || session !== currentSession) return;
-  library = session.library; favorites = session.favorites; applyRoute();
+  if (generation !== gameGeneration || session !== currentSession) return false;
+  library = session.library; favorites = session.favorites; applyRoute(); return true;
 }
 function discoverySummary(state) {
   if (currentSession.profile.groupedCharacters) return '目录已更新' + (state.assetVersion ? '至 ' + state.assetVersion : '') + '，新增 ' + (state.added || 0) + ' 项角色或皮肤资源。';
@@ -644,6 +649,7 @@ $('discovery-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (!currentSession?.profile.features.discovery || collectionRunning) return;
   const session = currentSession, generation = gameGeneration;
+  clearTimeout(polling); statusGeneration++;
   session.discoveryIds = $('discovery-ids').value;
   session.collection.begin(); collectionRunning = true; collectionJob = { type: 'catalog', state: 'running', scope: 'catalog', phase: 'catalog', roles: [] };
   updateGetButtons(); renderDiscoveryResult();
@@ -661,24 +667,29 @@ $('discovery-form').addEventListener('submit', async event => {
 });
 async function pollStatus(session = currentSession) {
   if (!session || session !== currentSession) return;
-  const generation = gameGeneration;
+  const generation = gameGeneration, request = ++statusGeneration;
+  let delay = 5000;
   clearTimeout(polling);
   try {
     const response = await fetch(session.path + 'api/status', { cache: 'no-store' }); if (!response.ok) throw new Error('下载状态读取失败。');
-    const state = await response.json(), view = session.collection.observe(state);
-    if (generation !== gameGeneration || session !== currentSession) return;
+    const state = await response.json();
+    if (generation !== gameGeneration || session !== currentSession || request !== statusGeneration) return;
+    const view = session.collection.observe(state);
     collectionJob = state; collectionRunning = view.running;
     $('collection-status').hidden = !view.visible; updateGetButtons(); renderDiscoveryResult();
     if (state) {
       const phase = { ui: '播放器 UI', client: '公开客户端配置', version: '游戏资源版本', catalog: '角色清单', icons: '角色头像', scripts: '剧情', indexing: '素材引用', cg: session.profile.features.stories ? 'CG 与剧情素材' : 'CG', motions: motionLabel(), portraits: '立绘', voices: '角色语音', extracting: '角色内容' }[state.phase] || session.profile.scopes[state.scope || 'all']?.label || '资源';
-      $('collection-title').textContent = state.type === 'catalog' ? '正在拉取' + session.profile.label + '的新角色 · ' + phase : '正在获取角色 ' + (state.roles || []).join('、') + ' 的' + phase;
+      $('collection-title').textContent = collectionRunning
+        ? state.type === 'catalog' ? '正在拉取' + session.profile.label + '的新角色 · ' + phase : '正在获取角色 ' + (state.roles || []).join('、') + ' 的' + phase
+        : { ready: '资源已更新', partial: '部分资源未完成', failed: '下载失败', interrupted: '下载已中断' }[state.state] || '任务已结束';
       const total = state.phase === 'voices' ? state.voiceTargets : ['cg', 'motions'].includes(state.phase) ? state.mediaTargets : state.phase === 'portraits' ? state.portraitTargets : state.targets;
       const done = state.phase === 'voices' ? state.voiceChecked : ['cg', 'motions'].includes(state.phase) ? state.mediaChecked : state.phase === 'portraits' ? state.portraitChecked : state.checked;
       $('collection-detail').textContent = (done || 0) + ' / ' + (total || 0);
       $('collection-progress').max = total || 1; $('collection-progress').value = done || 0;
-      if (collectionRunning) polling = setTimeout(() => pollStatus(session), 1000);
+      if (collectionRunning) delay = 1000;
       else if (view.completed) {
-        await loadLibrary(session); if (generation !== gameGeneration) return;
+        const refreshed = await loadLibrary(session); if (!refreshed || generation !== gameGeneration || request !== statusGeneration) return;
+        session.collection.acknowledge();
         if (state.error) notify(state.error);
         else if (state.failed) notify('部分资源未能下载：' + (state.errors?.[0]?.error || state.failed + ' 项失败。'));
         else if (state.state === 'interrupted') notify('下载已中断，可重新下载继续。');
@@ -689,7 +700,11 @@ async function pollStatus(session = currentSession) {
         updateGetButtons();
       }
     }
-  } catch { if (generation === gameGeneration && session === currentSession) polling = setTimeout(() => pollStatus(session), 5000); }
+  } catch { /* Keep completion pending until the local index can be refreshed. */ }
+  finally {
+    if (generation === gameGeneration && session === currentSession && request === statusGeneration)
+      polling = setTimeout(() => pollStatus(session), delay);
+  }
 }
 
 document.querySelectorAll<HTMLElement>('.nav-item').forEach(button => button.addEventListener('click', () => setTab(button.dataset.tab)));

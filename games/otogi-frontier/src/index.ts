@@ -20,10 +20,11 @@ function createService({ root, origin, fetchResource }) {
       if (!catalog.characters.some(character => character.id === id)) return json({ error: '角色未被索引。' }, 404);
       let release; try { release = acquirePackLock(root); } catch { return json({ error: '童话边境资源正在处理，请等当前任务完成。' }, 409); }
       const initial = { state: 'running', roles: [id], scope, targets: 0, checked: 0, failed: 0, pid: process.pid };
-      try { fs.writeFileSync(file, JSON.stringify(initial)); } catch (error) { release(); throw error; }
+      const save = state => { fs.writeFileSync(file + '.tmp', JSON.stringify(state)); fs.renameSync(file + '.tmp', file); };
+      try { save(initial); } catch (error) { release(); throw error; }
       Promise.resolve().then(async () => {
         try { await collect(root, { roles: [id], scope, retryMissing: payload.retryMissing === true, fetchResource }); }
-        catch (error) { fs.writeFileSync(file, JSON.stringify({ state: 'failed', roles: [id], scope, error: error.message })); }
+        catch (error) { save({ state: 'failed', roles: [id], scope, error: error.message }); }
         finally { release(); }
       }).catch(error => console.error(error.message)); return json(initial, 202);
     }

@@ -1,16 +1,9 @@
-"""Install original UI artwork, layout, font glyphs and click particle data.
-
-This maintenance exporter uses the cached web client and known UI prefabs only;
-character story collection never downloads these shared resources.
-"""
+"""Export Muv-Luv UI trees, sprites and font geometry."""
 import hashlib
 import io
-import json
 import math
 import pathlib
-import sys
 
-import UnityPy
 from PIL import Image, ImageChops
 from unity_graph import ref, components, transform, graph
 from ui_export import ui_sprite_image
@@ -37,7 +30,7 @@ class WindowExporter:
         target = self.output / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
-        return 'story-ui/dotabyss/' + name
+        return 'story-ui/muvluv/' + name
 
     def png(self, image, prefix='image'):
         stream = io.BytesIO()
@@ -135,78 +128,3 @@ class WindowExporter:
                                    'spacing': props.get('m_characterSpacing', 0), 'outline': outline}
             rows.append(row)
         return rows
-
-    def click(self, player):
-        selected = next(obj for obj in player.objects if obj.type.name == 'GameObject' and obj.peek_name() == 'TouchEffect' and obj.path_id == 6617)
-        layers = []
-        for game, _ in graph(selected):
-            items = components(game)
-            particles = next((obj for obj in items if obj.type.name == 'ParticleSystem'), None)
-            if not particles:
-                continue
-            data = particles.parse_as_dict()
-            renderer = next(obj for obj in items if obj.type.name == 'ParticleSystemRenderer')
-            material = ref(renderer, renderer.parse_as_dict()['m_Materials'][0])
-            props = material.parse_as_dict()['m_SavedProperties']
-            textures = dict(props['m_TexEnvs'])
-            tex = textures.get('_MainTex') or textures.get('_BaseMap')
-            texture = ref(material, tex['m_Texture']).parse_as_object().image
-            trans = transform(game).parse_as_dict()
-            initial = data['InitialModule']
-            layers.append({'name': game.peek_name(), 'file': self.png(texture, 'click'), 'delay': data['startDelay']['scalar'],
-                           'lifetime': initial['startLifetime']['scalar'], 'size': initial['startSize']['scalar'],
-                           'scale': trans['m_LocalScale']['x'], 'rotation': initial['startRotation']['scalar'],
-                           'count': int(data['EmissionModule']['m_Bursts'][0]['countCurve']['scalar']),
-                           'sizeCurve': data['SizeModule']['curve'], 'color': initial['startColor']['maxGradient'],
-                           'fade': data['ColorModule']['gradient']['maxGradient'], 'shape': data['ShapeModule'],
-                           'velocity': data['VelocityModule']})
-        return {'duration': max(layer['delay'] + layer['lifetime'] for layer in layers), 'pixelsPerUnit': 108, 'layers': layers}
-
-
-def main():
-    request = json.load(sys.stdin)
-    scene = UnityPy.load(*request['scene'])
-    prefabs = [(item, UnityPy.load(*item['inputs'])) for item in request['prefabs']]
-    templates = {}
-    for env in [scene, *[env for _, env in prefabs]]:
-        for obj in env.objects:
-            if obj.type.name != 'MonoBehaviour':
-                continue
-            props = obj.parse_as_dict()
-            if len(props) > 4:
-                templates[ref(obj, props['m_Script']).parse_as_dict()['m_ClassName']] = obj.serialized_type.node
-    writer = WindowExporter(request['output'], templates)
-    result = {'version': 1, 'frame': {'width': 1920, 'height': 1080}, 'views': {}, 'fonts': {}}
-    for name, key in [('MenuArea', 'menu'), ('MessageArea', 'message')]:
-        root = next(obj for obj in scene.objects if obj.type.name == 'GameObject' and obj.peek_name() == name)
-        result['views'][key] = writer.tree(root)
-    # Story backgrounds retain this larger Image rectangle when panned by the
-    # script. Fitting it to the viewport first discards the authored overscan.
-    background = next(obj for obj in scene.objects if obj.type.name == 'GameObject' and obj.peek_name() == 'BgCanvas')
-    view = next(comp for comp in components(background) if comp.type.name == 'MonoBehaviour' and '_imageBG' in writer.read(comp))
-    image = ref(view, writer.read(view)['_imageBG'])
-    rect = transform(ref(image, writer.read(image)['m_GameObject'])).parse_as_dict()
-    result['background'] = {'size': [rect['m_SizeDelta']['x'], rect['m_SizeDelta']['y']]}
-    title = next(obj for obj in scene.objects if obj.type.name == 'GameObject' and obj.peek_name() == 'NovelTitle')
-    title_text = next(obj for obj, name in graph(title) if name == 'Text')
-    size = transform(title).parse_as_dict()['m_SizeDelta']
-    result['title'] = {'size': [size['x'], size['y']], 'text': writer.tree(title_text)[0]['text']}
-    # NovelViewMessageWindow opens this bottom-anchored panel at y=0; the
-    # serialized scene retains its hidden, off-screen y=-540 position.
-    result['views']['message'][0]['position'][1] = 0
-    for spec, env in prefabs:
-        root = next(value.deref() for key, value in env.container.items() if key == spec['internalId'])
-        result['views'][root.peek_name()] = writer.tree(root)
-    player = UnityPy.load(request['player'])
-    options = next(obj for obj in player.objects if obj.type.name == 'GameObject' and obj.peek_name() == 'Popup_Option')
-    result['views']['options'] = writer.tree(options)
-    result['click'] = writer.click(player)
-    for key, value in writer.fonts.items():
-        file = writer.save('native/font-' + hashlib.sha256(key.encode()).hexdigest()[:12] + '.json', json.dumps(value, ensure_ascii=False).encode())
-        result['fonts'][key] = file
-    writer.save('native/window.json', json.dumps(result, ensure_ascii=False).encode())
-    print(json.dumps({'views': {name: len(rows) for name, rows in result['views'].items()}, 'fonts': len(writer.fonts), 'clickLayers': len(result['click']['layers'])}))
-
-
-if __name__ == '__main__':
-    main()

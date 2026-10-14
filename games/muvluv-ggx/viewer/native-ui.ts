@@ -12,7 +12,7 @@ function keyedRows(rows){
 export async function loadNativeUi(file,asset){
   const key=asset(file);
   if(!cache.has(key))cache.set(key,(async()=>{
-    const response=await fetch(key);if(!response.ok)throw new Error('原版窗口素材读取失败，请重新整理资源库。');
+    const response=await fetch(key);if(!response.ok)throw new Error('原版窗口素材读取失败，请下载播放器 UI 后重试。');
     const data=await response.json();if(data.version!==1||!data.views?.menu||!data.views?.options)throw new Error('原版窗口素材版本无效。');
     const fonts={};
     await Promise.all(Object.entries<any>(data.fonts||{}).map(async([name,file])=>{

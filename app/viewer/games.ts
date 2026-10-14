@@ -41,16 +41,20 @@ function gameSession(project) {
     collection: collectionTracker() };
 }
 function collectionTracker() {
-  let observed = false;
+  let observed = false, pending = false, initialized = false, previous = '';
   return {
     latest: null,
-    begin() { observed = true; }, cancel() { observed = false; },
+    begin() { observed = true; }, cancel() { observed = false; pending = false; },
+    acknowledge() { observed = false; pending = false; },
     observe(state) {
-      const running = state?.state === 'running', completed = !!state && !running && observed;
-      observed = running; this.latest = state;
-      // Historical terminal states are ignored on first load. Completion is a
-      // short toast after a job observed/started in this session, never a banner.
-      return { running, visible: running, completed };
+      const running = state?.state === 'running';
+      const signature = JSON.stringify([state?.state, state?.started, state?.finished, state?.id, state?.roles, state?.scope]);
+      if (running) { observed = true; pending = false; }
+      else if (state && (observed || initialized && signature !== previous)) pending = true;
+      initialized = true; previous = signature; this.latest = state;
+      // A failed index read must not consume completion. Also observe jobs
+      // completed in another tab, while ignoring history on the first load.
+      return { running, visible: running, completed: !running && pending };
     }
   };
 }

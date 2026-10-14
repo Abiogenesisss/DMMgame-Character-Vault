@@ -42,7 +42,8 @@ export ={...{
       "label": "立绘"
     },
     "cg": {
-      "label": "CG"
+      "label": "CG",
+      "savedFrom": ["cg", "motions"]
     },
     "motions": {
       "label": "动态 CG"
@@ -52,6 +53,10 @@ export ={...{
     },
     "stories": {
       "label": "完整 CG 剧情"
+    },
+    "ui": {
+      "label": "播放器 UI",
+      "cachedLabel": "检查播放器 UI"
     }
   }
 },...content};
