@@ -1,8 +1,4 @@
-"""Install original UI artwork, layout, font glyphs and click particle data.
-
-This maintenance exporter uses the cached web client and known UI prefabs only;
-character story collection never downloads these shared resources.
-"""
+"""Extract the story UI once from downloaded game bundles and public client data."""
 import hashlib
 import io
 import json
@@ -12,8 +8,8 @@ import sys
 
 import UnityPy
 from PIL import Image, ImageChops
-from export_unity import ref, components, transform, graph
-from ui_export import ui_sprite_image
+from export_unity import ref, components, transform, graph, helpers
+from ui_export import ui_sprite_image, export_ui
 
 
 class WindowExporter:
@@ -175,7 +171,19 @@ def main():
             props = obj.parse_as_dict()
             if len(props) > 4:
                 templates[ref(obj, props['m_Script']).parse_as_dict()['m_ClassName']] = obj.serialized_type.node
-    writer = WindowExporter(request['output'], templates)
+    output = pathlib.Path(request['output'])
+    ui_root = output / 'story-ui/dotabyss'
+    writer = WindowExporter(ui_root, templates)
+    export_ui(scene, output, helpers, ref, components, transform)
+    theme_file = ui_root / 'theme.json'
+    theme = json.loads(theme_file.read_text(encoding='utf8'))
+    # Keep every generated dependency under the UI cache, separate from CG.
+    for part in ['normal', 'adult', 'marker']:
+        source = output / theme[part]['file']
+        name = 'native/' + source.name
+        theme[part]['file'] = writer.save(name, source.read_bytes())
+    theme['native'] = 'story-ui/dotabyss/native/window.json'
+    theme_file.write_text(json.dumps(theme, ensure_ascii=False), encoding='utf8')
     result = {'version': 1, 'frame': {'width': 1920, 'height': 1080}, 'views': {}, 'fonts': {}}
     for name, key in [('MenuArea', 'menu'), ('MessageArea', 'message')]:
         root = next(obj for obj in scene.objects if obj.type.name == 'GameObject' and obj.peek_name() == name)

@@ -91,9 +91,9 @@ export class DotabyssStoryPlayer{
   async load(story){
     this.story=story;if(story.program?.version!==2)throw new Error('请更新此角色的完整剧情素材。');
     const token=this.token;
-    if(!story.ui)throw new Error('本地剧情窗口未安装，请重新整理资源库。');
-    const response=await fetch(this.asset(story.ui));if(!response.ok)throw new Error('本地剧情窗口读取失败，请重新整理资源库。');this.theme=await response.json();if(token!==this.token)return;
-    if(!this.theme.native)throw new Error('原版窗口素材尚未安装，请重新整理资源库。');
+    if(!story.ui)throw new Error('请先点击“下载播放器 UI”补齐本地界面。');
+    const response=await fetch(this.asset(story.ui));if(!response.ok)throw new Error('本地剧情窗口读取失败，请下载播放器 UI 后重试。');this.theme=await response.json();if(token!==this.token)return;
+    if(!this.theme.native)throw new Error('原版窗口素材尚未安装，请下载播放器 UI 后重试。');
     this.nativeData=await loadNativeUi(this.theme.native,this.asset);if(token!==this.token)return;
     this.ui=new OriginalStoryUi(this,this.nativeData);this.applyTheme();
     this.clickEffect?.destroy();if(this.nativeData.click)this.clickEffect=new DotabyssClickEffect(this.nativeData.click,{asset:this.asset,root:this.container});

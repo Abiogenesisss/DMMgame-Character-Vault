@@ -2,6 +2,7 @@ node_modules/
 parsed-data/
 /.tools/
 /har/
+/games/dotabyss/story-ui/
 __pycache__/
 *.pyc
 *.har

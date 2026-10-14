@@ -540,7 +540,8 @@ function updateGetButtons() {
       || scope === 'motions' && selectedRole.cgAvailable === false || scope === 'voices' && selectedRole.voiceAvailable === false;
     if (scope === 'stories' && selectedRole?.storyAvailable === false) button.disabled = true;
     button.textContent = collectionRunning && collectionJob?.roles?.some(id => id === selectedRole?.id || selectedRole?.memberIds?.includes(id)) && jobScope === scope
-      ? '正在下载' + label + '…' : (saved ? '更新' : '下载') + label;
+      ? '正在下载' + label + '…' : currentSession.profile.scopes[scope]?.cachedLabel&&library?.storyUi
+        ? currentSession.profile.scopes[scope].cachedLabel : (saved ? '更新' : '下载') + label;
   });
   document.querySelectorAll<HTMLButtonElement>('[data-skin-id]').forEach(button => { button.disabled = collectionRunning; });
 }
@@ -669,7 +670,7 @@ async function pollStatus(session = currentSession) {
     collectionJob = state; collectionRunning = view.running;
     $('collection-status').hidden = !view.visible; updateGetButtons(); renderDiscoveryResult();
     if (state) {
-      const phase = { client: '公开客户端配置', version: '游戏资源版本', catalog: '角色清单', icons: '角色头像', scripts: '剧情', indexing: '素材引用', cg: session.profile.features.stories ? 'CG 与剧情素材' : 'CG', motions: motionLabel(), portraits: '立绘', voices: '角色语音', extracting: '角色内容' }[state.phase] || session.profile.scopes[state.scope || 'all']?.label || '资源';
+      const phase = { ui: '播放器 UI', client: '公开客户端配置', version: '游戏资源版本', catalog: '角色清单', icons: '角色头像', scripts: '剧情', indexing: '素材引用', cg: session.profile.features.stories ? 'CG 与剧情素材' : 'CG', motions: motionLabel(), portraits: '立绘', voices: '角色语音', extracting: '角色内容' }[state.phase] || session.profile.scopes[state.scope || 'all']?.label || '资源';
       $('collection-title').textContent = state.type === 'catalog' ? '正在拉取' + session.profile.label + '的新角色 · ' + phase : '正在获取角色 ' + (state.roles || []).join('、') + ' 的' + phase;
       const total = state.phase === 'voices' ? state.voiceTargets : ['cg', 'motions'].includes(state.phase) ? state.mediaTargets : state.phase === 'portraits' ? state.portraitTargets : state.targets;
       const done = state.phase === 'voices' ? state.voiceChecked : ['cg', 'motions'].includes(state.phase) ? state.mediaChecked : state.phase === 'portraits' ? state.portraitChecked : state.checked;

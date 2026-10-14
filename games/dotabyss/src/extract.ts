@@ -6,7 +6,7 @@ const {parseStory}=require('./story.ts');
 const {acbAudio}=require('./cri.ts');
 const {runUnity}=require('./unity.ts');
 const {cgChapterAddresses}=require('./story-program.ts');
-const {installStoryUi}=require('./story-ui.ts');
+const {readStoryUi}=require('./story-ui.ts');
 const {completeStories}=require('./complete-story.ts');
 function voiceLabel(code) {
   const rules: [RegExp, string, string][]=[[/^battle_/,'battle','战斗'],[/^(affection|level|limit|mastery|skill)_/,'growth','养成'],[/^(birthday|christmas|newyear|valentine|summer|halloween)_/,'season','季节']];
@@ -117,7 +117,7 @@ async function extract(root,progress: (...args: any[]) => any=()=>{},{roles,scop
       cgAvailable:character.motions.length+character.cg.length>0,portraitTotal:character.portraits.length,voiceAvailable:character.voices.length>0,storyAvailable:cgChapterAddresses(character).length>0,
       collected:!!(portraits.length||cg.length||motions.length||index.audio.some(item=>item.character===character.id)),stories:[]});
   }
-  const storyUi=installStoryUi(output);
+  const storyUi=readStoryUi(root);
   // Catalog pulls also cache one script for identifying a character. Only
   // enroll owners requested for story collection (plus existing collections).
   const enrolled=new Set<string>(readJson(path.join(root,'metadata/story-owners.json'),readJson(path.join(output,'index.json'),{stories:[]}).stories.map(s=>s.character).filter(Boolean)));
@@ -130,7 +130,7 @@ async function extract(root,progress: (...args: any[]) => any=()=>{},{roles,scop
         if(story.segments.some(segment=>path.posix.basename(segment,'.txt')===path.posix.basename(address,'.acb')))index.audio.push({...clip,id:sha256(Buffer.from(story.id+':'+clip.code)),resource:address,context:'story',category:'story-voice',scene:story.id,characters:story.characters});}
       if(value.model&&!index.skeletons.some(item=>item.file===value.model.file))index.skeletons.push({...value.model,id:sha256(Buffer.from(address)),resource:address,kind:'story'});
     }
-    story.ui=storyUi.file;
+    story.ui=storyUi?.file||null;
     story.audio=Object.fromEntries(Object.entries<any>(story.program.audio).map(([key,reference])=>{const bank=saved(reference.bank),clip=reference.cue?bank?.audio?.find(clip=>clip.code===reference.cue):bank?.audio?.[0];return [key,{...reference,file:clip?.file||null,loop:!!clip?.loop,duration:clip?.duration}];}));
     story.models=Object.fromEntries(Object.entries<any>(story.program.models).flatMap(([key,address])=>{const model=saved(address)?.model;return model?[[key,model]]:[];}));
     story.effects=Object.fromEntries(story.assets.flatMap(address=>saved(address)?.effect?[[address,saved(address).effect]]:[]));
@@ -138,6 +138,7 @@ async function extract(root,progress: (...args: any[]) => any=()=>{},{roles,scop
     story.actors=Object.fromEntries(Object.entries<any>(story.program.actors||{}).map(([key,actor])=>{const value=saved(actor.resource),icon=saved(actor.iconResource)?.image?.file||index.characters.find(c=>actor.id.startsWith(c.id))?.icon;return [key,{...actor,file:value?.image?.file||null,scene:value?.scene?.file||null,icon}];}));
     story.icons=Object.fromEntries(Object.values<any>(story.actors).filter(a=>a.name&&a.icon).map(a=>[a.name,a.icon]));
     story.missingAssets=story.assets.filter(address=>!saved(address));
+    if(!storyUi)story.missingAssets.push(require('./story-program.ts').UI_SCENE);
     story.complete=story.expectedSegments.length===story.segments.length&&!story.missingAssets.length&&!story.program.missing?.length&&Object.values<any>(story.audio).every(a=>a.file)&&Object.values<any>(story.actors).every(a=>a.file);
     const file='stories/'+story.id+'.json';writeJson(path.join(output,file),story);
     const script=story.segments.length===1?saved(story.address).script.file:'scripts/'+story.id+'-complete.txt';

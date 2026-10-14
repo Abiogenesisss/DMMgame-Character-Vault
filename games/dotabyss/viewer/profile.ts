@@ -42,6 +42,10 @@ export ={...{
     },
     "stories": {
       "label": "完整 CG 剧情"
+    },
+    "ui": {
+      "label": "播放器 UI",
+      "cachedLabel": "检查播放器 UI"
     }
   }
 },...content};

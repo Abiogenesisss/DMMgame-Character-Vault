@@ -3,10 +3,12 @@ const path=require('node:path');
 const {downloadUrls}=require('../../../app/download.ts'),{fetchPublicResource}=require('../../../app/public-fetch.ts');
 const {resourceKind}=require('./format.ts'),{readCatalog,readJson,writeJson}=require('./catalog.ts');
 const {cgChapterAddresses,UI_SCENE}=require('./story-program.ts');
-function collectionScope(scope='all'){if(!['all','catalog','portraits','cg','motions','voices','stories'].includes(scope))throw new Error('下载分类有误。');return scope;}
+const {ensureStoryUi}=require('./story-ui.ts');
+function collectionScope(scope='all'){if(!['all','catalog','portraits','cg','motions','voices','stories','ui'].includes(scope))throw new Error('下载分类有误。');return scope;}
 function assetAddresses(catalog,{roles,scope='all'}: any={}){
   scope=collectionScope(scope);const chosen=roles||catalog.characters.map(item=>item.id);
   if(!Array.isArray(chosen)||!chosen.length||chosen.some(id=>!catalog.characters.some(item=>item.id===id)))throw new Error('请指定已索引的角色编号。');
+  if(scope==='ui')return [];
   const addresses=[];
   for(const character of catalog.characters.filter(item=>chosen.includes(item.id))){
     if(scope!=='stories'&&character.icon)addresses.push(character.icon);
@@ -18,7 +20,7 @@ function assetAddresses(catalog,{roles,scope='all'}: any={}){
   }
   return [...new Set(addresses)];
 }
-async function collect(root,{roles,scope='all',retryMissing=false,fetchResource=fetchPublicResource,extractResources=(...args)=>require('./extract.ts').extract(...args),onProgress}: any={}){
+async function collect(root,{roles,scope='all',retryMissing=false,fetchResource=fetchPublicResource,extractResources=(...args)=>require('./extract.ts').extract(...args),prepareUi=ensureStoryUi,onProgress}: any={}){
   scope=collectionScope(scope);const catalog=readCatalog(root),addresses=assetAddresses(catalog,{roles,scope});
   const file=path.join(root,'state/dotabyss-status.json'),unavailableFile=path.join(root,'state/dotabyss-unavailable.json'),unavailable=readJson(unavailableFile,{}),seen=new Set<string>(),absent=new Set<string>();
   const state={state:'running',roles:roles||[],scope,targets:0,checked:0,saved:0,skipped:0,failed:0,unavailable:0,started:new Date().toISOString(),pid:process.pid};
@@ -36,6 +38,10 @@ async function collect(root,{roles,scope='all',retryMissing=false,fetchResource=
     errors.push(...result.errors.filter(error=>!absent.has(error.url)));writeJson(unavailableFile,unavailable);
   }
   try{
+    if(['all','stories','ui'].includes(scope)){
+      await prepareUi(root,{fetchResource,onProgress:progress=>{Object.assign(state,progress);persist();}});
+      Object.assign(state,{phase:scope});
+    }
     await download(addresses);let index=await extractResources(root,undefined,{roles,scope});
     if(['all','stories'].includes(scope)){
       const fs=require('node:fs'),dependencies=[];
