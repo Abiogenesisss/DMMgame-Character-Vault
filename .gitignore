@@ -1,0 +1,10 @@
+node_modules/
+parsed-data/
+/.tools/
+/har/
+__pycache__/
+*.pyc
+*.har
+*.log
+.DS_Store
+Thumbs.db

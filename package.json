@@ -1,0 +1,32 @@
+{
+  "name": "webgame-resource-workspace",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Local character resource and story viewer for DMM games",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --import tsx app/server.ts --open",
+    "serve": "node --import tsx app/server.ts",
+    "setup:python": "node --import tsx tools/setup-python.ts",
+    "build:viewer": "node --import tsx tools/build-viewer.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@esotericsoftware/spine-pixi-v7": "4.2.120",
+    "@msgpack/msgpack": "3.1.3",
+    "@pixi/unsafe-eval": "7.4.3",
+    "pixi-live2d-display-advanced": "1.1.0",
+    "pixi-spine": "4.0.6",
+    "pixi.js": "7.4.3",
+    "sharp": "0.35.5",
+    "tsx": "4.23.15"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "jsdom": "26.1.0",
+    "typescript": "6.0.3"
+  }
+}

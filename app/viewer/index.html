@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DMMgame Character Vault</title>
+  <link rel="icon" href="data:,"><link rel="stylesheet" href="/shared/viewer.css"><script src="/shared/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" id="skip-to-content" href="#main-content">跳到主要内容</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="brand" aria-label="DMMgame Character Vault 首页"><span class="brand-mark" aria-hidden="true"><span>V</span></span><span>DMMgame<small>CHARACTER VAULT</small></span></a>
+      <span id="header-game" class="header-game">角色资源库</span>
+      <nav id="game-links" class="game-links" aria-label="切换游戏" hidden></nav>
+      <nav class="site-nav" aria-label="角色列表">
+        <button class="nav-item active" data-tab="characters" aria-current="page"><span>角色图鉴</span><b id="characters-count">—</b></button>
+        <button class="nav-item" data-tab="favorites"><span>我的收藏</span><b id="favorites-count">0</b></button>
+      </nav>
+    </div>
+  </header>
+  <main id="main-content" tabindex="-1">
+    <section id="collection-status" class="collection-status" hidden aria-live="polite"><div><strong id="collection-title"></strong><span id="collection-detail"></span></div><progress id="collection-progress" aria-label="收集进度"></progress></section>
+    <section id="catalog-page" aria-labelledby="page-title">
+      <header class="page-header"><div><div class="eyebrow"><span id="page-game-title">CHARACTER VAULT</span><span class="eyebrow-line" aria-hidden="true"></span></div><h1 id="page-title" tabindex="-1">角色图鉴</h1><p id="page-description">正在读取角色…</p></div><div class="page-motif" aria-hidden="true"><span></span><span></span><span></span></div></header>
+      <div class="catalog-layout">
+        <div class="catalog-results">
+          <section class="catalog-toolbar"><span id="result-count"></span><div class="catalog-actions"><button id="discover-characters" class="primary-button" data-feature="discovery" hidden>拉取新角色</button><button id="refresh" class="secondary-button">刷新</button></div></section>
+          <section id="catalog" class="catalog" aria-label="角色列表"></section>
+          <div id="empty" class="empty" hidden>暂无匹配角色。</div><button id="more" class="more-button" hidden>加载更多</button>
+        </div>
+        <aside class="catalog-aside" aria-labelledby="catalog-tools-heading">
+          <div class="aside-heading"><span class="section-kicker">CHARACTER INDEX</span><h2 id="catalog-tools-heading">检索角色</h2></div>
+          <label class="search-box" id="catalog-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"></circle><path d="m15 15 6 6"></path></svg><input type="search" id="search" aria-label="搜索角色" placeholder="角色名字或编号"></label>
+          <fieldset class="catalog-filter"><legend>排序方式</legend><select id="sort-order" class="catalog-select" aria-label="角色排序方式"><option value="id-asc">编号：从小到大</option></select></fieldset>
+          <fieldset class="catalog-filter" data-feature="rarity" hidden><legend>稀有度</legend><select id="rarity-filter" class="catalog-select" aria-label="按稀有度筛选"><option value="all">全部稀有度</option></select></fieldset>
+          <fieldset class="catalog-filter" data-feature="artists" hidden><legend>画师</legend><select id="artist-filter" class="catalog-select" aria-label="按画师筛选"><option value="all">全部画师</option></select></fieldset>
+          <fieldset class="catalog-filter"><legend>资源状态</legend><div class="filter-options"><button type="button" data-availability="all" aria-pressed="true">全部</button><button type="button" data-availability="saved" aria-pressed="false">已保存</button><button type="button" data-availability="missing" aria-pressed="false">未获取</button></div></fieldset>
+          <fieldset class="catalog-filter" data-feature="dynamicCg" hidden><legend>角色内容</legend><label class="filter-check"><input type="checkbox" id="dynamic-filter"><span>只看有动态 CG 的角色</span></label></fieldset>
+          <div class="catalog-library-summary"><div><span>已保存角色</span><strong id="saved-count">—</strong></div><div><span>已保存立绘</span><strong id="portrait-count">—</strong></div><div><span>已保存 CG</span><strong id="cg-count">—</strong></div><div data-feature="dynamicCg" hidden><span>有动态 CG 的角色</span><strong id="dynamic-count">—</strong></div></div>
+          <p id="game-note" class="aside-note"></p>
+        </aside>
+      </div>
+    </section>
+    <section id="character-page" class="character-page" aria-labelledby="role-title" hidden>
+      <div class="character-toolbar"><button id="back-to-catalog" class="secondary-button">← 返回角色图鉴</button><div class="character-actions"><button id="role-favorite" class="secondary-button" aria-pressed="false">☆ 收藏角色</button><button id="get-character" class="primary-button" data-download-scope="all">下载角色全部资源</button></div></div>
+      <header class="character-heading"><div class="eyebrow"><span id="role-game-title">CHARACTER VAULT</span><span class="eyebrow-line" aria-hidden="true"></span></div><h1 id="role-title" tabindex="-1"></h1><p id="role-description"></p><p id="role-artists" class="note" data-feature="artists" hidden></p></header>
+      <nav class="role-tabs" role="tablist" aria-label="角色内容" data-feature="sections" hidden>
+        <button id="role-tab-presentation" data-section="presentation" role="tab" aria-selected="true" aria-controls="role-panel-presentation" tabindex="0"><span class="role-tab-symbol" aria-hidden="true">▧</span>鉴赏</button>
+        <button id="role-tab-stories" data-section="stories" data-feature="stories" role="tab" aria-selected="false" aria-controls="role-panel-stories" tabindex="-1">剧情 <span id="role-story-count"></span></button>
+        <button id="role-tab-voices" data-section="voices" data-feature="voices" role="tab" aria-selected="false" aria-controls="role-panel-voices" tabindex="-1">语音 <span id="role-voice-count"></span></button>
+      </nav>
+      <section id="role-panel-presentation" role="tabpanel" aria-labelledby="role-tab-presentation">
+        <section id="role-portrait-section" class="appreciation-section" aria-labelledby="role-portrait-heading">
+          <div class="section-heading appreciation-heading"><h2 id="role-portrait-heading">立绘鉴赏</h2><div class="section-actions"><p id="portrait-status"></p><button id="get-character-portraits" class="secondary-button resource-download" data-download-scope="portraits">下载立绘</button></div></div>
+          <div id="role-skins" class="dotabyss-skins" aria-label="角色皮肤资源" hidden></div>
+          <div id="portrait-forms" class="local-tabs" role="tablist" aria-label="立绘形态"></div>
+          <div id="role-portrait-stage" class="portrait-stage" role="tabpanel"><div class="portrait-placeholder"><span id="portrait-flower" aria-hidden="true">✿</span><img id="role-icon" alt="角色头像" hidden><img id="role-art" class="role-art" alt="角色立绘" hidden><div id="role-portrait-motion" class="portrait-motion" aria-label="角色立绘" hidden></div><p id="portrait-motion-state" class="portrait-motion-state" role="status" hidden></p><strong id="portrait-label"></strong></div></div>
+        </section>
+        <section id="role-gallery-section" class="appreciation-section" aria-labelledby="role-gallery-heading">
+          <div class="section-heading appreciation-heading"><h2 id="role-gallery-heading">CG 鉴赏 <span id="role-cg-count" class="section-count"></span></h2><button id="get-character-cg" class="secondary-button resource-download" data-download-scope="cg">下载 CG</button></div>
+          <div id="role-media" class="role-media gallery-strip"></div><p id="role-cg-empty" class="section-empty" hidden>暂无已保存的角色 CG。</p>
+        </section>
+        <section id="role-motion-section" class="appreciation-section" aria-labelledby="role-motions-heading" data-feature="motions" hidden>
+          <div class="section-heading appreciation-heading"><h2 id="role-motions-heading"><span id="role-motion-label">动态 CG</span> <span id="role-motion-count" class="section-count"></span></h2><div class="section-actions"><button id="get-character-motions" class="secondary-button resource-download" data-download-scope="motions">下载动态 CG</button><button id="expand-motion" class="secondary-button" hidden>放大鉴赏 ↗</button></div></div>
+          <div id="role-motions" class="local-tabs" role="tablist" aria-label="动态 CG"></div>
+          <div id="inline-motion-controls" class="inline-motion-controls" hidden><label class="animation-control">动作<select id="inline-animation-select" aria-label="选择动态 CG 动作"></select></label><p id="inline-motion-note" class="note"></p></div>
+          <div id="inline-motion-preview" class="inline-motion-preview" role="tabpanel" hidden><div id="inline-motion-stage" class="inline-motion-stage" aria-label="动态 CG 预览" aria-busy="false"></div><div id="inline-motion-state" class="motion-state"><span id="inline-motion-message" role="status">正在加载动态 CG…</span><button id="inline-motion-retry" class="secondary-button" hidden>重新加载</button></div></div>
+          <p id="role-motions-empty" class="section-empty" hidden>暂无已保存的动态 CG。</p>
+        </section>
+      </section>
+      <section id="role-panel-stories" role="tabpanel" aria-labelledby="role-tab-stories" hidden><div class="section-heading appreciation-heading"><h2>角色剧情</h2><button id="get-character-stories" class="secondary-button resource-download" data-download-scope="stories">下载剧情</button></div><div id="role-stories" class="role-stories"></div><p id="role-stories-empty" class="section-empty" hidden>暂无已保存的角色剧情。</p></section>
+      <section id="role-panel-voices" class="role-voice-section" role="tabpanel" aria-labelledby="role-tab-voices" hidden><div class="section-heading appreciation-heading"><h2 id="role-voices-heading">角色语音</h2><button id="get-character-voices" class="secondary-button resource-download" data-download-scope="voices">下载角色语音</button></div><p class="note voice-introduction">日常、战斗、养成与季节语音。剧情配音在剧情中播放。</p><div id="role-voices" class="role-voices"></div><p id="role-voices-empty" class="section-empty" hidden>暂无已保存的角色语音。</p><div class="voice-player"><p id="role-voice-title" class="note" hidden></p><audio id="role-voice-player" controls preload="none" aria-label="角色语音播放器" hidden></audio></div></section>
+    </section>
+    <footer class="page-footer"><span>DMMgame Character Vault</span><span id="footer-game">角色资源收藏与鉴赏</span></footer>
+  </main>
+  <dialog id="discovery-dialog" class="discovery-dialog" aria-labelledby="discovery-title"><header class="dialog-header"><div><small id="discovery-game"></small><h2 id="discovery-title">拉取新角色</h2></div><button class="close-button" data-close aria-label="关闭拉取新角色">×</button></header><form id="discovery-form"><label class="discovery-field" for="discovery-ids">角色编号或范围 <span>可选</span></label><textarea id="discovery-ids" rows="3" maxlength="6000" aria-describedby="discovery-hint" placeholder="留空自动更新；也可填写 ID 或 ID 范围"></textarea><p id="discovery-hint" class="note"></p><p class="note">这里只补充角色清单和头像，立绘、CG 与语音可进入角色后下载。</p><div class="discovery-actions"><button id="discovery-submit" class="primary-button" type="submit">开始拉取</button></div></form><section id="discovery-result" class="discovery-result" aria-live="polite" hidden><p id="discovery-message"></p><p id="discovery-warning" class="note" hidden></p><div id="discovery-roles" class="discovery-roles"></div></section></dialog>
+  <dialog id="image-dialog" class="image-dialog" aria-labelledby="image-title"><header class="dialog-header"><div><small>角色 CG</small><h2 id="image-title"></h2></div><button class="close-button" data-close aria-label="关闭 CG">×</button></header><img id="cg-image" alt="CG 大图"></dialog>
+  <dialog id="motion-dialog" class="motion-dialog" aria-labelledby="motion-title"><header class="dialog-header"><div><small>动态鉴赏</small><h2 id="motion-title"></h2></div><button class="close-button" data-close aria-label="关闭动态素材">×</button></header><div id="motion-stage" class="motion-stage"></div><label class="animation-control">动作<select id="animation-select" aria-label="选择动画动作"></select></label><p id="motion-note" class="note"></p></dialog>
+  <dialog id="story-dialog" class="story-dialog" aria-labelledby="story-title"><div class="dialog-header"><h2 id="story-title"></h2><button class="close-button" data-close aria-label="关闭剧情">×</button></div><div id="story-reader"></div></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

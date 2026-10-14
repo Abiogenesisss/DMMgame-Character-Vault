@@ -1,0 +1,28 @@
+* text=auto
+*.cjs text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.cmd text eol=crlf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.txt text eol=lf
+# Bundled third-party shaders preserve their original string whitespace.
+games/*/dist/module.js -whitespace
+app/viewer/app.js -whitespace
+
+/.tools export-ignore
+/har export-ignore
+/docs export-ignore
+/tests export-ignore
+/test export-ignore
+/parsed-data export-ignore
+/node_modules export-ignore
+games/*/tests export-ignore
+games/*/docs export-ignore
+games/*/dev export-ignore
+/app/dev export-ignore
