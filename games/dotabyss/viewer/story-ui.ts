@@ -2,6 +2,9 @@ import {NativeUiView,paintText,layoutText} from './native-ui.ts';
 const root='Box/Contents',soundRoot=root+'/ViewGroup/Sounds',textRoot=root+'/ViewGroup/Texts';
 const defaults=()=>({speed:1,transparency:50,mute:false,levels:{bgm:50,se:50,voice:50,bgv:50},muted:{}});
 const element=(tag,cls)=>{const el=document.createElement(tag);el.className=cls;return el;};
+// Original CG material colors for caches exported before TMP underlay support.
+const cgNameOutline={r:50/255,g:108/255,b:130/255,a:1};
+const cgBodyOutline={r:.0116122449,g:.0193823613,b:.0466650277,a:222/255};
 export class OriginalStoryUi{
   declare player: any;
   declare data: any;
@@ -27,6 +30,14 @@ export class OriginalStoryUi{
     try{const saved=JSON.parse(localStorage.getItem('dotabyss-story-options-v1'));if(saved)this.config={...this.config,...saved,levels:{...this.config.levels,...saved.levels}};}catch{}
     this.menuHost=element('div','dotabyss-native-menu');this.messageHost=element('div','dotabyss-native-message');
     player.stage.append(this.messageHost,this.menuHost);this.menu=this.view(this.menuHost,'menu');this.message=this.view(this.messageHost,'message');
+    const cgName=this.message.nodes.get('R18/TextName'),cgBody=this.message.nodes.get('R18/Sample_M_Text');
+    if(cgName&&cgBody){
+      // The name is vertically centered inside a taller container. Reserve
+      // the gap below its text, excluding the container's empty bottom padding.
+      const textHeight=Math.min(cgName.rect.height,cgName.row.text.size),textTop=(cgName.rect.height-textHeight)/2;
+      const lift=cgName.rect.y+textTop+textHeight+12-cgBody.rect.y;
+      if(lift>0)this.message.setRect('R18/TextName',{position:[cgName.row.position[0],cgName.row.position[1]+lift]});
+    }
     player.window=this.message.get('');player.marker=this.message.get('Icon_NovelMarker');player.controls=this.menuHost;
     this.menu.bind('Auto/Button_AutoStart','自动播放',()=>this.setAuto(true));this.menu.bind('Auto/Button_AutoStop','停止自动播放',()=>this.setAuto(false));
     this.menu.bind('Skip/Button_Skip','跳过剧情',()=>this.openSkip());
@@ -46,7 +57,23 @@ export class OriginalStoryUi{
     this.player.speaker=this.message.nodes.get(this.prefix+'/TextName').text;this.player.text=this.message.nodes.get(this.prefix+'/Sample_M_Text').text;
     this.applyConfig();if(this.lastText)this.writeText(this.lastText[0],this.lastText[1]);
   }
-  writeText(speaker,text){this.lastText=[speaker,text];this.message.setText(this.prefix+'/TextName',speaker,{outline:.15});this.message.setText(this.prefix+'/Sample_M_Text',text,{outline:.15,lineHeight:64,vertical:256});}
+  writeText(speaker,text){
+    this.lastText=[speaker,text];
+    const nameStyle: any={outline:.15},bodyStyle: any={outline:.15,lineHeight:64,vertical:256};
+    if(this.adult){
+      const theme=this.player.theme||{},name=theme.name||{},body=theme.body||{};
+      nameStyle.outline=name.outline??.15;nameStyle.outlineColor=name.outlineColor||this.message.nodes.get('R18/TextName').row.text.outlineColor||cgNameOutline;
+      bodyStyle.outline=body.outline??.15;bodyStyle.outlineColor=body.outlineColor||cgBodyOutline;
+      if(name.color)nameStyle.color=name.color;if(body.color)bodyStyle.color=body.color;
+      if(Number.isFinite(name.fontSize)&&name.fontSize>0)nameStyle.size=name.fontSize;
+      if(Number.isFinite(body.fontSize)&&body.fontSize>0)bodyStyle.size=body.fontSize;
+      const size=bodyStyle.size||this.message.nodes.get('R18/Sample_M_Text').row.text.size;
+      const lines=theme.linePositions?.find(pair=>pair._messageFontSize===size)?._lineYPos;
+      if(lines?.length>1&&lines[0]>lines[1])bodyStyle.lineHeight=lines[0]-lines[1];
+      bodyStyle.spacing=Number.isFinite(theme.letterSpacing)?theme.letterSpacing:-1;
+    }
+    this.message.setText(this.prefix+'/TextName',speaker,nameStyle);this.message.setText(this.prefix+'/Sample_M_Text',text,bodyStyle);
+  }
   applyConfig(){
     for(const kind of ['voice','bgv','bgm','se'])this.player.audio.level(kind,this.config.mute||this.config.muted[kind]?0:Math.max(0,Math.min(100,this.config.levels[kind]))/100);
     this.player.textInterval=[75,40,20,0][this.config.speed]??40;

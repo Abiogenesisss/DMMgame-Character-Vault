@@ -33,6 +33,24 @@ def ui_sprite_image(sprite):
     return canvas.transpose(Image.Transpose.FLIP_TOP_BOTTOM).resize((round(sprite.m_Rect.width), round(sprite.m_Rect.height)), Image.Resampling.LANCZOS)
 
 
+def text_material(material, vertex_color):
+    saved = material.get('m_SavedProperties', {})
+    colors, floats = dict(saved.get('m_Colors', [])), dict(saved.get('m_Floats', []))
+    face = colors.get('_FaceColor', {'r': 1, 'g': 1, 'b': 1, 'a': 1})
+    result = {'color': {channel: vertex_color[channel] * face[channel] for channel in 'rgba'},
+              'outline': floats.get('_OutlineWidth', 0)}
+    color = colors.get('_OutlineColor', {'r': 0, 'g': 0, 'b': 0, 'a': 1})
+    keywords = material.get('m_ValidKeywords') or material.get('m_ShaderKeywords', '').split()
+    # The novel's named outline materials use a zero-offset TMP underlay;
+    # _OutlineWidth alone is zero even though the glyph has a colored border.
+    if not result['outline'] and 'UNDERLAY_ON' in keywords:
+        result['outline'] = max(0, floats.get('_UnderlayDilate', 0) * floats.get('_ScaleRatioC', 1) / 2)
+        color = colors.get('_UnderlayColor', color)
+    if result['outline']:
+        result['outlineColor'] = color
+    return result
+
+
 def export_ui(env, root, helpers, ref, components, transform):
     selected = None
     for obj in env.objects:
@@ -76,7 +94,10 @@ def export_ui(env, root, helpers, ref, components, transform):
             props = component.parse_as_dict()
             if 'm_fontSize' not in props:
                 continue
-            result = {'fontSize': props['m_fontSize'], 'color': props.get('m_fontColor'), 'rect': rect(obj)}
+            pointer = props.get('m_sharedMaterial', {})
+            material = ref(component, pointer).parse_as_dict() if pointer.get('m_PathID') else {}
+            result = {'fontSize': props['m_fontSize'], 'rect': rect(obj),
+                      **text_material(material, props.get('m_fontColor', {'r': 1, 'g': 1, 'b': 1, 'a': 1}))}
             font_pointer = props.get('m_fontAsset', {})
             if font_pointer.get('m_PathID'):
                 asset = ref(component, font_pointer)

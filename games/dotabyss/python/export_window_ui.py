@@ -9,7 +9,7 @@ import sys
 import UnityPy
 from PIL import Image, ImageChops
 from export_unity import ref, components, transform, graph, helpers
-from ui_export import ui_sprite_image, export_ui
+from ui_export import ui_sprite_image, export_ui, text_material
 
 
 class WindowExporter:
@@ -116,19 +116,12 @@ class WindowExporter:
                 if 'm_fontSize' in props:
                     font = self.font(ref(component, props['m_fontAsset'])) if props.get('m_fontAsset', {}).get('m_PathID') else None
                     material_pointer = props.get('m_sharedMaterial', {})
-                    outline = 0
                     color = props.get('m_fontColor', {'r': 1, 'g': 1, 'b': 1, 'a': 1})
-                    if material_pointer.get('m_PathID'):
-                        material = ref(component, material_pointer).parse_as_dict()
-                        outline = dict(material['m_SavedProperties']['m_Floats']).get('_OutlineWidth', 0)
-                        # TMP multiplies vertex tint by the material face tint.
-                        # Log bubbles use white vertices with a dark-blue face.
-                        face_color = dict(material['m_SavedProperties']['m_Colors']).get('_FaceColor', {'r': 1, 'g': 1, 'b': 1, 'a': 1})
-                        color = {channel: color[channel] * face_color[channel] for channel in 'rgba'}
+                    material = ref(component, material_pointer).parse_as_dict() if material_pointer.get('m_PathID') else {}
                     row['text'] = {'value': props.get('m_text', ''), 'font': font, 'size': props['m_fontSize'],
-                                   'color': color,
+                                   **text_material(material, color),
                                    'horizontal': props.get('m_HorizontalAlignment', 1), 'vertical': props.get('m_VerticalAlignment', 512),
-                                   'spacing': props.get('m_characterSpacing', 0), 'outline': outline}
+                                   'spacing': props.get('m_characterSpacing', 0)}
             rows.append(row)
         return rows
 
