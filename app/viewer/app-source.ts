@@ -46,6 +46,7 @@ let preview, previewGeneration = 0, storyReader, storyGeneration = 0;
 let inlineModel = null, inlinePlayer, motionGeneration = 0, inlineFailed = false;
 let portraitModel = null, portraitPlayer, portraitGeneration = 0, portraitFailed = false;
 let appliedHash = null;
+let gameView = null;
 
 function rememberGame() {
   if (!currentSession) return;
@@ -89,6 +90,7 @@ function configureGame() {
   $('motion-dialog').querySelector<HTMLElement>('small').textContent = combined ? 'CG 鉴赏' : '动态鉴赏';
   $('motion-dialog').querySelector<HTMLElement>('[data-close]').setAttribute('aria-label', '关闭' + label);
   document.querySelectorAll<HTMLElement>('[data-feature]').forEach(node => { node.hidden = !profile.features[node.dataset.feature]; });
+  $('dynamic-filter').closest('fieldset').hidden = !profile.features.dynamicCg || profile.features.dynamicFilter === false;
   document.querySelectorAll<HTMLButtonElement>('[data-download-scope]').forEach(button => { button.hidden = !profile.scopes[button.dataset.downloadScope]; });
   $('sort-order').replaceChildren(...SORT_ORDERS.filter(order => !order.feature || profile.features[order.feature]).map(order => {
     const option = element('option', '', order.label); option.value = order.id; return option;
@@ -98,6 +100,7 @@ function configureGame() {
 async function activateGame(project, { focus = false }: any = {}) {
   rememberGame(); const generation = ++gameGeneration;
   await loadGameModule(project); if (generation !== gameGeneration) return;
+  gameView?.destroy(); gameView = null;
   clearTimeout(searchTimer); clearTimeout(polling); clearTimeout(toastTimer); $('toast').hidden = true;
   pauseAudition(true); stopInlineMotion(); inlineModel = null; inlineFailed = false;
   stopPortraitMotion(); portraitModel = null;
@@ -113,6 +116,8 @@ async function activateGame(project, { focus = false }: any = {}) {
   $('collection-status').hidden = true; $('character-page').hidden = true; $('catalog-page').hidden = false;
   $('catalog').replaceChildren(); $('empty').hidden = true; $('more').hidden = true; $('page-description').textContent = '正在读取角色…';
   $('main-content').setAttribute('aria-busy', 'true'); configureGame(); updateGetButtons();
+  gameView = currentSession.profile.createView?.({ asset, openRole, toggleFavorite, getCharacter, characterCard, isBusy: () => collectionRunning, syncMedia: syncInlineMotion,
+    rerender: () => { renderCatalog(); if (selectedRole) renderRole(selectedRole); } }) || null;
   try { localStorage.setItem('vault-active-game-v1', project.id); } catch {}
   try { await loadLibrary(currentSession); }
   catch (error) { if (generation !== gameGeneration) return; $('main-content').setAttribute('aria-busy', 'false'); $('page-description').textContent = error.message; throw error; }
@@ -132,6 +137,7 @@ async function loadProjects() {
   const active = projects.find(project => project.id === currentSession?.id);
   if (active && active.revision === currentSession.revision) { renderGameLinks(); return false; }
   if (currentSession && !active) {
+    gameView?.destroy(); gameView = null;
     ++gameGeneration; clearTimeout(polling); pauseAudition(true); stopInlineMotion(); stopPortraitMotion(); preview?.destroy(); preview = null; storyReader?.destroy(); storyReader = null;
     document.querySelectorAll<HTMLDialogElement>('dialog[open]').forEach(dialog => dialog.close()); currentSession = null; library = null; selectedRole = null; collectionRunning = false;
   }
@@ -260,11 +266,13 @@ function renderCatalog() {
   $('favorites-count').textContent = library.characters.filter(character => favorites.has(character.id)).length;
   const { availability, dynamicOnly, rarity, artist, sort } = catalogState[tab];
   $('sort-order').value = sort;
-  const filter = { tab, favorites, query: $('search').value, availability, dynamicOnly: currentSession.profile.features.dynamicCg && dynamicOnly, rarity, artist };
+  const filter = { tab, favorites, query: $('search').value, availability, dynamicOnly: currentSession.profile.features.dynamicCg && currentSession.profile.features.dynamicFilter !== false && dynamicOnly, rarity, artist };
   const items = sortCharacters(currentSession.profile.catalogCharacters(library, filter), sort, currentSession.profile.rarities);
   if (currentSession.profile.features.rarity) {
     const rows = currentSession.profile.catalogCharacters(library, { ...filter, rarity: 'all' }), counts = new Map();
-    for (const character of rows) { const key = character.rarityId == null ? 'unknown' : String(character.rarityId); counts.set(key, (counts.get(key) || 0) + 1); }
+    for (const character of rows) for (const rarityId of currentSession.profile.rarityValues?.(character) || [character.rarityId]) {
+      const key = rarityId == null ? 'unknown' : String(rarityId); counts.set(key, (counts.get(key) || 0) + 1);
+    }
     $('rarity-filter').replaceChildren(...[{ id: 'all', label: '全部稀有度' }, ...currentSession.profile.rarities, { id: 'unknown', label: '未标注' }].map(rarity => {
       const option = element('option', '', rarity.label + '（' + (rarity.id === 'all' ? rows.length : counts.get(String(rarity.id)) || 0) + '）'); option.value = String(rarity.id); return option;
     })); $('rarity-filter').value = rarity;
@@ -282,12 +290,13 @@ function renderCatalog() {
   $('cg-count').textContent = library.stats?.cg ?? 0;
   document.querySelectorAll<HTMLElement>('[data-availability]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.availability === availability)));
   $('catalog').replaceChildren();
-  for (const character of items.slice(0, limit)) $('catalog').append(characterCard(character));
+  if (gameView?.renderCatalog) gameView.renderCatalog($('catalog'), items, { library, favorites, tab, query: filter.query, selectedRole });
+  else for (const character of items.slice(0, limit)) $('catalog').append(characterCard(character));
   $('result-count').textContent = items.length.toLocaleString('zh-CN') + (tab === 'favorites' ? ' 位收藏角色' : ' 位角色');
   $('empty').hidden = items.length > 0;
   $('empty').textContent = !library.characters.length && currentSession.profile.emptyCatalogMessage ? currentSession.profile.emptyCatalogMessage
     : tab === 'favorites' && !favorites.size ? '在角色图鉴点 ☆，收藏喜欢的角色。' : '暂无匹配角色。';
-  $('more').hidden = items.length <= limit;
+  $('more').hidden = !!gameView?.renderCatalog || items.length <= limit;
   $('more').textContent = '加载更多 · 还有 ' + Math.max(0, items.length - limit) + ' 位角色';
 }
 function updateFavorite() {
@@ -368,13 +377,14 @@ function renderVoices(items) {
   }
 }
 function renderRole(character) {
+  gameView?.renderRole(character, library);
   const resources = roleContent(library, character);
   const skins = currentSession.profile.groupedCharacters ? character.skins || [] : [];
   const sameRole = $('portrait-forms').dataset.characterId === character.id;
   const previousPhase = sameRole ? $('portrait-forms').dataset.phase : null;
   const previousModel = sameRole ? inlineModel?.file : null;
   stopInlineMotion();
-  $('role-title').textContent = character.name + (character.rarityId == null ? '' : ' · ' + character.rarityLabel);
+  $('role-title').textContent = character.name + (character.rarityId == null || currentSession.profile.hideRoleRarity ? '' : ' · ' + character.rarityLabel);
   $('role-description').textContent = character.releaseUnconfirmed ? '实装待确认 · 已收录角色素材，可按需获取。' : currentSession.profile.roleDescription;
   $('role-artists').textContent = '画师：' + (characterArtists(character).join(' / ') || '未标注');
   $('back-to-catalog').textContent = tab === 'favorites' ? '← 返回我的收藏' : '← 返回角色图鉴';
@@ -399,8 +409,11 @@ function renderRole(character) {
     ? currentSession.profile.missingStoryMessage : '暂无已保存的角色剧情。';
   for (const metadata of resources.stories) {
     const button = element('button', 'role-story-button', metadata.title || '角色剧情');
+    const incomplete = currentSession.profile.requiresCompleteStories && metadata.complete === false;
+    if (incomplete) { button.disabled = true; button.textContent += ' · 尚未完整'; }
     button.addEventListener('click', () => openStory(metadata));
     const row = element('div', 'role-story-row'); row.append(button);
+    if (incomplete) row.append(element('span', 'note', '脚本 ' + (metadata.segments || 0) + '/' + (metadata.expectedSegments || '?') + ' 段 · 缺少 ' + (metadata.missingAssets ?? '?') + ' 项资源，可点击“下载剧情”补齐。'));
     if (metadata.script) {
       const link = element('a', 'script-link', '下载演出脚本');
       link.href = asset(metadata.script); link.download = metadata.id + '.' + (metadata.scriptFormat || 'csv'); row.append(link);
@@ -525,21 +538,23 @@ async function loadInlineMotion() {
   }
 }
 function updateGetButtons() {
+  gameView?.setBusy(collectionRunning);
   $('discover-characters').disabled = collectionRunning || !library;
   $('discovery-submit').disabled = collectionRunning || !library;
   $('discovery-submit').textContent = collectionRunning && collectionJob?.type === 'catalog' ? '正在拉取…' : '开始拉取';
   $('discovery-ids').disabled = collectionRunning;
   const resources = selectedRole ? roleContent(library, selectedRole) : null;
+  const downloadRole = selectedRole && (currentSession.profile.downloadCharacter?.(selectedRole) || selectedRole);
   const jobScope = collectionJob?.scope || (collectionJob?.voicesOnly ? 'voices' : 'all');
   document.querySelectorAll<HTMLButtonElement>('[data-download-scope]').forEach(button => {
     const scope = button.dataset.downloadScope, label = currentSession?.profile.scopes[scope]?.label;
     if (!label) { button.hidden = true; return; }
     button.hidden = false;
     const savedFrom = currentSession.profile.scopes[scope].savedFrom || [scope];
-    const saved = scope === 'all' ? selectedRole?.collected : savedFrom.some(kind => resources?.[kind]?.length) || scope === 'cg' && combinedCg() && resources?.motions.length;
-    button.disabled = collectionRunning || !selectedRole || scope === 'cg' && (currentSession.profile.features.rarity || currentSession.profile.requireCgAvailability) && !selectedRole.cgAvailable
-      || scope === 'motions' && selectedRole.cgAvailable === false || scope === 'voices' && selectedRole.voiceAvailable === false;
-    if (scope === 'stories' && selectedRole?.storyAvailable === false) button.disabled = true;
+    const saved = scope === 'all' ? downloadRole?.collected : savedFrom.some(kind => resources?.[kind]?.length) || scope === 'cg' && combinedCg() && resources?.motions.length;
+    button.disabled = collectionRunning || !downloadRole || scope === 'cg' && (currentSession.profile.features.rarity || currentSession.profile.requireCgAvailability) && !downloadRole.cgAvailable
+      || scope === 'motions' && downloadRole.cgAvailable === false || scope === 'voices' && downloadRole.voiceAvailable === false;
+    if (scope === 'stories' && downloadRole?.storyAvailable === false) button.disabled = true;
     button.textContent = collectionRunning && collectionJob?.roles?.some(id => id === selectedRole?.id || selectedRole?.memberIds?.includes(id)) && jobScope === scope
       ? '正在下载' + label + '…' : currentSession.profile.scopes[scope]?.cachedLabel&&library?.storyUi
         ? currentSession.profile.scopes[scope].cachedLabel : (saved ? '更新' : '下载') + label;
@@ -553,7 +568,7 @@ async function getCharacter(id, scope = 'all') {
   collectionRunning = true; collectionJob = { roles: [id], scope }; updateGetButtons();
   try {
     const response = await fetch(session.path + 'api/collect', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, scope, retryMissing: library.characters.flatMap(character => [character, ...(character.skins || [])]).find(character => character.id === id)?.collected === true }) });
+      body: JSON.stringify({ id, scope, retryMissing: library.characters.flatMap(character => [character, ...(character.skins || []), ...(character.styles || [])]).find(character => character.id === id)?.collected === true }) });
     const job = await response.json(); if (!response.ok) throw new Error(job.error);
     session.collection.observe(job); if (generation !== gameGeneration) return;
     collectionJob = job;
@@ -747,7 +762,7 @@ $('refresh').addEventListener('click', async () => { try { if (library) saveCata
 $('back-to-catalog').addEventListener('click', backToCatalog);
 $('role-favorite').addEventListener('click', () => { if (selectedRole) toggleFavorite(selectedRole.id); });
 document.querySelectorAll<HTMLButtonElement>('[data-download-scope]').forEach(button => button.addEventListener('click', () => {
-  if (selectedRole) getCharacter(selectedRole.id, button.dataset.downloadScope);
+  if (selectedRole) getCharacter((currentSession.profile.downloadCharacter?.(selectedRole) || selectedRole).id, button.dataset.downloadScope);
 }));
 for (const id of ['portrait-forms', 'role-motions']) {
   $(id).addEventListener('keydown', event => {

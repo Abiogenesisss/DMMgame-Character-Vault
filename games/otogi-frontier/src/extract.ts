@@ -11,14 +11,16 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
   const previous = readJson(path.join(output, 'index.json'), {}), old = new Map<any, any>((previous.characters || []).map(character => [character.id, character]));
   const index: { version: number; game: string; aliases: any; characters: any[]; images: any; audio: any; skeletons: any; stories: any; issues: any; iconBody?: string; stats?: Record<string, number>; generated?: string; } = { version: 1, game: 'otogi-frontier', aliases: catalog.aliases, characters: [], images: previous.images || [], audio: previous.audio || [], skeletons: previous.skeletons || [], stories: previous.stories || [], issues: roles ? (previous.issues || []).filter(issue => !roles.includes(issue.character)) : scope === 'catalog' ? previous.issues || [] : [] };
   const codec = readJson(path.join(root, 'metadata/asset-codec.json'), null), bundles = [], specs = new Map();
+  const selected = catalog.characters.filter(character => !roles || roles.includes(character.id));
   const good = spec => pack.manifest.routes[routeKey('GET', spec.url)]?.findLast(record => record.status === 200 && fs.existsSync(path.join(pack.root, 'bodies', record.body)));
   const referenced = file => file && fs.existsSync(path.join(output, file));
   function queue(spec, kind, character, extra: any = {}) {
     if (specs.has(spec.url)) return;
     const record = good(spec); if (!record) return;
-    // A sheet can preload unreleased sprites. An unchanged sheet still needs
-    // re-indexing when the refreshed master adds a role without a linked icon.
-    const done = kind === 'icons' ? previous.iconBody === record.body && catalog.characters.every(item => referenced(old.get(item.id)?.icon))
+    // A shared atlas may be exported one role at a time. Check each role's
+    // actual icon and source body, including deleted files and newly added roles.
+    if (kind === 'icons') index.issues = index.issues.filter(issue => issue.resource !== spec.url && issue.resource !== spec.name);
+    const done = kind === 'icons' ? selected.every(character => index.images.some(image => image.category === 'icon' && image.character === character.id && image.archiveBody === record.body && referenced(image.file)))
       : kind === 'voices' ? index.audio.some(item => item.archiveBody === record.body && referenced(item.file))
         : kind === 'cg' ? index.skeletons.some(item => item.exportVersion >= 2 && item.archiveBody === record.body && referenced(item.file) && (item.layers || []).every(layer => referenced(layer.file))) || index.images.some(item => item.category === 'cg' && item.archiveBody === record.body && referenced(item.file))
           : ['music', 'sound'].includes(kind) ? index.audio.some(item => item.archiveBody === record.body && referenced(item.file)) : index.images.some(item => item.archiveBody === record.body && referenced(item.file));
@@ -32,14 +34,14 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
       if (!bundles.some(item => item.url === spec.url)) bundles.push({ input, kind: kind === 'actors' ? 'portraits' : kind, url: spec.url, body: record.body, scene: spec.scene, ...extra });
     } catch (error) { index.issues.push({ character, resource: spec.name, error: error.message }); }
   }
-  if (!roles) {
+  {
     const sprites = {};
-    for (const character of catalog.characters) for (const variant of character.variants.slice().reverse()) sprites[variant] = character.id;
+    for (const character of selected) for (const variant of character.variants.slice().reverse()) sprites[variant] = character.id;
     // Prefer the initial icon. Other available icons are a fallback per root.
-    for (const character of catalog.characters) sprites[character.id] = character.id;
+    for (const character of selected) sprites[character.id] = character.id;
     for (const spec of catalog.icons) queue(spec, 'icons', undefined, { sprites });
   }
-  for (const character of catalog.characters.filter(item => !roles || roles.includes(item.id))) {
+  for (const character of selected) {
     if (['all', 'portraits'].includes(scope)) for (const spec of character.portraits) queue(spec, 'portraits', character.id);
     if (['all', 'cg', 'motions', 'stories'].includes(scope)) for (const spec of character.cg) queue(spec, 'cg', character.id);
     if (['all', 'voices'].includes(scope)) for (const spec of character.voices) queue(spec, 'voices', character.id);
@@ -66,7 +68,7 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
     const cg = index.images.filter(image => image.category === 'cg' && image.character === character.id && referenced(image.file));
     const motions = index.skeletons.filter(item => item.character === character.id && referenced(item.file));
     index.characters.push({ id: character.id, name: character.name, variants: character.variants, rarityId: character.rarityId, rarityLabel: character.rarityLabel,
-      icon: icon?.file || before.icon || null, portraits, cg, motions: motions.map(item => item.id), hasDynamicCg: motions.length > 0,
+      icon: icon?.file || (referenced(before.icon) ? before.icon : null), portraits, cg, motions: motions.map(item => item.id), hasDynamicCg: motions.length > 0,
       cgAvailable: character.cg.length > 0, voiceAvailable: character.voices.length > 0, portraitTotal: character.portraits.length,
       storyAvailable: character.stories.length > 0, collected: !!(portraits.length || cg.length || motions.length || index.audio.some(item => item.character === character.id)), stories: [] });
   }

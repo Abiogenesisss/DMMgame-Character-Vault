@@ -10,3 +10,5 @@ __pycache__/
 *.log
 .DS_Store
 Thumbs.db
+/games/girls-creation/story-ui/
+/games/girls-creation/seed/
