@@ -697,10 +697,12 @@ async function pollStatus(session = currentSession) {
       $('collection-title').textContent = collectionRunning
         ? state.type === 'catalog' ? '正在拉取' + session.profile.label + '的新角色 · ' + phase : '正在获取角色 ' + (state.roles || []).join('、') + ' 的' + phase
         : { ready: '资源已更新', partial: '部分资源未完成', failed: '下载失败', interrupted: '下载已中断' }[state.state] || '任务已结束';
-      const total = state.phase === 'voices' ? state.voiceTargets : ['cg', 'motions'].includes(state.phase) ? state.mediaTargets : state.phase === 'portraits' ? state.portraitTargets : state.targets;
-      const done = state.phase === 'voices' ? state.voiceChecked : ['cg', 'motions'].includes(state.phase) ? state.mediaChecked : state.phase === 'portraits' ? state.portraitChecked : state.checked;
-      $('collection-detail').textContent = (done || 0) + ' / ' + (total || 0);
-      $('collection-progress').max = total || 1; $('collection-progress').value = done || 0;
+      const total = (state.phase === 'voices' ? state.voiceTargets : ['cg', 'motions'].includes(state.phase) ? state.mediaTargets : state.phase === 'portraits' ? state.portraitTargets : state.targets) ?? state.targets;
+      const done = (state.phase === 'voices' ? state.voiceChecked : ['cg', 'motions'].includes(state.phase) ? state.mediaChecked : state.phase === 'portraits' ? state.portraitChecked : state.checked) ?? state.checked;
+      $('collection-detail').textContent = collectionRunning && state.phase === 'extracting' ? '正在解包并更新内容…' : total > 0 ? (done || 0) + ' / ' + total : collectionRunning ? '正在准备资源…' : '处理已结束';
+      $('collection-progress').max = total || 1;
+      if (total > 0 && !(collectionRunning && state.phase === 'extracting')) $('collection-progress').value = done || 0;
+      else $('collection-progress').removeAttribute('value');
       if (collectionRunning) delay = 1000;
       else if (view.completed) {
         const refreshed = await loadLibrary(session); if (!refreshed || generation !== gameGeneration || request !== statusGeneration) return;

@@ -1,0 +1,103 @@
+body[data-game="twinkle-star-knights"] #role-gallery-section{display:none}
+.story-dialog[data-story-engine="twinkle"]{position:fixed;inset:0;width:min(1600px,calc(100vw - 24px),calc((100dvh - 24px)*16/9));max-width:none;max-height:none;height:fit-content;margin:auto;padding:0;border:0;border-radius:0;background:#101728;overflow:visible;box-shadow:0 10px 50px #0008}
+.story-dialog[data-story-engine="twinkle"]>.dialog-header{position:absolute;inset:0 0 auto;z-index:6000;margin:0;pointer-events:none;height:0}
+.story-dialog[data-story-engine="twinkle"]>.dialog-header h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.story-dialog[data-story-engine="twinkle"]>.dialog-header .close-button{position:absolute;right:10px;top:10px;width:34px;height:34px;pointer-events:auto;border:1px solid #ffffff80;background:#17253d77;color:#fff;border-radius:50%;font-size:22px;line-height:1}
+.story-dialog[data-story-engine="twinkle"]:has(.twinkle-overlay:not([hidden]))>.dialog-header .close-button{visibility:hidden}
+.story-dialog[data-story-engine="twinkle"] .twinkle-controls{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);padding:0}
+.story-dialog[data-story-engine="twinkle"] .twinkle-controls:focus-within{width:auto;height:auto;clip-path:none;bottom:8px;left:8px;padding:6px;background:#fff;z-index:4000}
+.twinkle-reader{color:#485a90;outline-offset:3px}
+.twinkle-reader:fullscreen{display:flex;align-items:center;justify-content:center;width:100vw;height:100dvh;background:#000}
+.twinkle-reader:fullscreen .twinkle-stage{width:min(100vw,calc(100dvh*16/9));flex:none}
+.twinkle-fullscreen{position:absolute;right:54px;top:10px;z-index:6000;display:grid;place-items:center;width:34px;height:34px;padding:7px;border:1px solid #ffffff80;background:#17253d77;color:#fff;border-radius:50%;cursor:pointer}
+.twinkle-fullscreen svg{width:100%;height:100%}
+.twinkle-fullscreen:focus-visible{outline:3px solid #15c9e6;outline-offset:3px}
+.twinkle-reader:fullscreen .twinkle-fullscreen{right:10px}
+.twinkle-stage:has(.twinkle-overlay:not([hidden])) .twinkle-fullscreen{visibility:hidden}
+.twinkle-stage{position:relative;aspect-ratio:16/9;background:#171a30;overflow:hidden;user-select:none}
+.twinkle-stage[data-loading="true"]:after{content:'正在载入剧情…';position:absolute;inset:0;display:grid;place-items:center;background:#171a30;color:#fff;z-index:5000;font-size:16px}
+.twinkle-canvas{position:absolute;inset:0;transform-origin:0 0;isolation:isolate}
+.twinkle-world{position:absolute;inset:0;transform-origin:50% 50%}
+.twinkle-scene,.twinkle-sprite{position:absolute;width:1280px;height:720px;transform-origin:50% 50%;pointer-events:none}
+.twinkle-scene img{width:100%;height:100%;object-fit:cover}
+.twinkle-sprite>img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:none}
+.twinkle-actor{position:absolute;width:640px;height:720px;transform-origin:50% 50%;pointer-events:none}
+.twinkle-actor img{width:100%;height:100%;object-fit:contain}
+.twinkle-fade{position:absolute;inset:0;background:#000;z-index:1000;pointer-events:none}
+.twinkle-native-ui{position:absolute;inset:0;z-index:2000;pointer-events:none;font-family:"Noto Sans JP","Yu Gothic","Microsoft YaHei",sans-serif}
+.twinkle-native-ui [hidden]{display:none!important}
+.twinkle-dialogue{position:absolute;left:0;bottom:0;width:1280px;height:283px;pointer-events:none;color:#fff}
+.twinkle-dialogue-bg{position:absolute;inset:0;background:linear-gradient(transparent,#22283c);background-size:100% 100%}
+.twinkle-dialogue-bg.has-sprite{background-color:transparent}
+.twinkle-message-decoration{position:absolute;left:-200px;bottom:0;width:1680px;height:156px;background-size:1252px 156px;background-repeat:repeat-x}
+.twinkle-speaker{position:absolute;left:180px;bottom:182px;width:368px;height:30px;text-align:center;font-size:28px;line-height:30px;font-weight:800;font-style:italic;text-shadow:0 2px 2px #1d365c,-1px -1px #344e74,1px -1px #344e74;background-size:100% 100%;white-space:nowrap}
+.twinkle-text{position:absolute;left:247px;bottom:22px;width:860px;height:135px;margin:0;color:#fff;font-size:27px;font-weight:700;line-height:1.6;letter-spacing:1.5px;white-space:pre-wrap;text-shadow:0 2px 2px #253044,1px 0 2px #253044,-1px 0 2px #253044;overflow-wrap:anywhere}
+.twinkle-next{display:inline-block;width:28px;height:34px;vertical-align:middle;margin-left:10px;background-size:100% 100%;animation:twinkle-next-glow 1.1s ease-in-out infinite alternate}
+.twinkle-dialogue[data-window="Full"],.twinkle-dialogue[data-window="Center"]{height:720px}
+.twinkle-dialogue[data-window="Full"] .twinkle-text,.twinkle-dialogue[data-window="Center"] .twinkle-text{left:220px;bottom:112px;height:495px;width:840px}
+.twinkle-native-controls{position:absolute;inset:0;pointer-events:none}
+.twinkle-native-ui button{box-sizing:border-box;min-width:0;min-height:0;box-shadow:none;cursor:pointer;pointer-events:auto}
+.twinkle-ui-button{border:0;background-color:transparent;background-position:center;background-size:100% 100%;background-repeat:no-repeat;color:#485a90;font:italic 700 25px/1.1 "Microsoft YaHei","Yu Gothic",sans-serif;padding:5px 14px;border-radius:0}
+.twinkle-ui-button:not(.has-sprite){border:2px solid #8dabc8;background-color:#f8fcff;border-radius:8px}
+.twinkle-ui-button:hover{filter:brightness(1.08)}
+.twinkle-ui-button:focus-visible{outline:3px solid #15c9e6;outline-offset:4px}
+.twinkle-ui-button[aria-pressed="true"],.twinkle-ui-button[aria-selected="true"]{color:#fff;text-shadow:-1px -1px #365d93,1px -1px #365d93,-1px 1px #365d93,1px 1px #365d93}
+.twinkle-ui-button.has-sprite[data-icon="true"]{font-size:0;color:transparent;padding:0;border:0}
+.twinkle-icon-button{position:absolute;left:1114px;width:72px;height:72px;padding:0}
+.twinkle-icon-button.twinkle-menu{left:1125px;width:50px;height:50px}
+div.twinkle-menu{position:absolute;inset:0;pointer-events:none}
+.twinkle-menu-backdrop{position:absolute;left:1111px;top:60px;width:77px;height:430px}
+.twinkle-choices{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;gap:12px;pointer-events:none}
+.twinkle-choices button{width:444px;height:106px;padding:15px 35px;font-size:25px;white-space:normal}
+.twinkle-controls{display:flex;align-items:center;gap:8px;padding-top:8px}
+.twinkle-status{margin-left:auto;font-size:12px;color:#555577}
+.twinkle-overlay{position:absolute;inset:0;background:#101d384d;pointer-events:auto;display:flex;align-items:center;justify-content:center}
+.twinkle-modal{position:relative;box-sizing:border-box;width:890px;height:688px;padding:70px 34px 110px;background-size:100% 100%;color:#4b5b91}
+.twinkle-modal:not(.has-sprite){border:2px solid #a4bdd3;background:#edf5fc;border-radius:8px}
+.twinkle-modal-title{position:absolute;top:14px;left:70px;right:70px;text-align:center;margin:0;font-size:28px;line-height:38px;font-style:italic;color:#4c5a90}
+.twinkle-modal-close{position:absolute;right:6px;top:6px;width:50px;height:50px}
+.twinkle-modal-footer{position:absolute;bottom:20px;left:0;right:0;display:flex;justify-content:center;gap:40px}
+.twinkle-modal-footer button{width:242px;height:76px;font-size:30px}
+.twinkle-modal-footer button[data-sprite="confirm"]{color:#a95e00}
+.twinkle-settings-tabs{display:flex;position:absolute;top:74px;left:30px;width:500px;height:37px}
+.twinkle-settings-tabs button{width:250px;height:37px;padding:0;font-size:25px}
+.twinkle-settings-scroll{position:absolute;top:124px;left:34px;right:34px;bottom:143px;padding:5px 38px 20px;overflow:auto;overscroll-behavior:contain;background-size:100% 100%;background-color:#fff;scrollbar-color:#a6f5ff #91a6bc;scrollbar-width:thin}
+.twinkle-setting-row{margin:10px 0;padding:0}
+.twinkle-setting-row h3{position:relative;font-size:19px;font-weight:700;font-style:italic;color:#5671cc;line-height:30px;border-bottom:1px solid #bac2d5;margin:0 0 8px;padding-left:6px}
+.twinkle-setting-row h3:after,.twinkle-setting-row h3:before{content:'✦';position:absolute;bottom:-12px;color:#cbd0df;font-size:12px}.twinkle-setting-row h3:before{left:0}.twinkle-setting-row h3:after{right:0}
+.twinkle-setting-row h3 button{width:32px;height:32px;margin-left:8px;vertical-align:middle}
+.twinkle-setting-range{display:flex;align-items:flex-start;justify-content:flex-end;gap:12px;padding:0 6px 0 0;height:64px}
+.twinkle-setting-range>button{width:44px;height:44px;margin-right:22px}
+.twinkle-range-end{display:flex;flex-direction:column;align-items:center;gap:0;font-size:20px;color:#444e68;font-style:italic;font-weight:700}
+.twinkle-range-end button{width:44px;height:44px;padding:0}
+.twinkle-range-track{position:relative;width:330px;display:flex;flex-direction:column;align-items:center;gap:0;padding-top:12px}
+.twinkle-range-track input{appearance:none;width:100%;height:10px;background:linear-gradient(to right,#a4f5fa 0 var(--fill,50%),#91a6bc var(--fill,50%) 100%);box-shadow:none;border:0;border-radius:0;accent-color:#3685fa;padding:0;cursor:pointer}
+.twinkle-range-track input::-webkit-slider-thumb{appearance:none;width:24px;height:24px;background:var(--twinkle-slider,#3589fb);background-size:100% 100%;border:0;border-radius:50%}
+.twinkle-range-track output{position:absolute;top:28px;transform:translateX(-50%);font-size:20px;line-height:30px;color:#444e68;font-style:italic;font-weight:700}
+.twinkle-setting-options{display:flex;gap:14px;padding-top:2px}.twinkle-setting-options button{min-width:176px;height:46px;font-size:25px}
+.twinkle-setting-help{font-size:17px;line-height:1.5;padding:8px 14px;background:#e9f8ff;color:#4b5c83}
+.twinkle-defaults{display:block;width:365px;height:76px;margin:20px auto 0;font-size:28px}
+.twinkle-text-sample{position:relative;min-height:120px;margin:12px -12px;padding:20px 25px;background:#606578;color:#fff;font-size:26px;font-weight:700;line-height:1.6;white-space:pre-wrap;text-shadow:1px 1px 2px #23324e}
+.twinkle-sample-bg{position:absolute;inset:0;background-size:100% 100%}.twinkle-text-sample p{position:relative;margin:0;color:#fff;font:inherit;line-height:inherit}
+.twinkle-auto-delay{float:right;background:#eafffb;border:1px solid #d2dedc;border-radius:4px;padding:0 5px;font-size:17px;line-height:25px}
+.twinkle-modal.twinkle-log{width:1240px;height:688px;padding:65px 25px 15px}
+.twinkle-log-scroll{height:100%;overflow:auto;overscroll-behavior:contain;scrollbar-color:#a6f5ff #91a6bc;display:flex;flex-direction:column;gap:12px;padding:10px}
+.twinkle-log-scroll:before{content:'';flex:1}
+.twinkle-log-row{position:relative;display:flex;flex-direction:column;justify-content:center;flex-shrink:0;min-height:166px;padding:18px 100px 26px;color:#fff;background-size:100% 100%;background-color:transparent}
+.twinkle-log-row:not(.has-sprite){background-color:rgba(77,77,141,.694)}
+.twinkle-log-row strong{font-size:22px;color:#fff}.twinkle-log-row p{font-size:27px;font-weight:700;color:#fff;line-height:1.5;white-space:pre-wrap;text-shadow:1px 1px 2px #26304c;margin:6px 0}
+.twinkle-log-voice{position:absolute;left:15px;top:50px;width:58px;height:58px}
+.twinkle-log-jump{position:absolute;right:12px;bottom:5px;width:120px;height:30px;font-size:16px}
+.twinkle-confirm{width:610px;height:300px}.twinkle-confirm>p{text-align:center;font-size:25px;margin:22px 0}
+.twinkle-confirm .twinkle-modal-footer button{width:190px;height:58px;font-size:26px}
+.twinkle-particles{position:absolute;inset:0;width:1280px;height:720px;pointer-events:none}
+.twinkle-title-effect>img.twinkle-title-background{position:absolute;left:-340px;top:-240px;width:1960px;height:1200px;transform:none;animation:twinkle-title-background 5s linear both}
+.twinkle-title-band{position:absolute;left:24px;top:232px;width:1232px;height:256px;animation:twinkle-title-reveal 5s linear both}
+.twinkle-title-band img{position:absolute;object-fit:fill;max-width:none;transform:none}.twinkle-title-band .left{left:0;width:616px;height:256px}.twinkle-title-band .right{left:616px;width:616px;height:256px;transform:scaleX(-1)}
+.twinkle-title-band .pattern{left:456px;top:9px;width:320px;height:96px}.twinkle-title-band p{position:absolute;left:120px;right:120px;top:110px;margin:0;text-align:center;color:#fff;font-size:36px;font-weight:700;text-shadow:0 2px 4px #27314d;white-space:pre-wrap}
+.twinkle-title-heading{position:absolute;left:251px;top:37px;width:730px;height:40px;text-align:center;color:#fff;font-size:28px;font-weight:700;text-shadow:0 2px 3px #263653}
+@keyframes twinkle-next-glow{from{opacity:.7;filter:brightness(.9)}to{opacity:1;filter:brightness(1.4)}}
+@keyframes twinkle-title-reveal{0%{opacity:0;transform:scaleX(.1)}10%,86%{opacity:1;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1.15)}}
+@keyframes twinkle-title-background{0%,100%{opacity:0}10%,86%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.twinkle-next,.twinkle-title-band,.twinkle-title-background{animation:none}}
+@media(max-width:600px){.twinkle-controls{gap:5px;flex-wrap:wrap}.twinkle-controls button{font-size:12px;padding:7px 9px}}

@@ -17,7 +17,8 @@ const fakeIpHosts = new Set([
   'assets.muvluv-girls-garden.com',
   'api-game.muvluv-girls-garden.com',
   'cdn-r18.gc.dmmgames.com',
-  'www-r18.gc.dmmgames.com'
+  'www-r18.gc.dmmgames.com',
+  'd3mya90gbacu0m.cloudfront.net'
 ]);
 
 // Conservatively exclude special-purpose IPv6, including 6to4/Teredo which can
