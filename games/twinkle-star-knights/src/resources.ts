@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { sha256, loadPack, routeKey, saveManifest } from '../../../app/pack.ts';
 import { writeAtomicFileSync } from '../../../app/atomic-file.ts';
 import { fetchPublicResource } from '../../../app/public-fetch.ts';
@@ -8,6 +9,18 @@ export const validId = (value: unknown): value is string => typeof value === 'st
 export const validBundle = (value: unknown): value is string => typeof value === 'string' && /^(?:WebGL\/[a-f0-9]{32}|catalog|catalog_sound)\.bundle$/.test(value);
 export const readJson = (file: string, fallback: any = null): any => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (error) { if (error.code === 'ENOENT') return fallback; throw error; } };
 export const writeJson = (file: string, data: unknown) => writeAtomicFileSync(file, JSON.stringify(data));
+const transientCodes = new Set(['ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'ETIMEDOUT', 'EAI_AGAIN', 'ENETUNREACH', 'EHOSTUNREACH', 'ERR_STREAM_PREMATURE_CLOSE', 'ABORT_ERR']);
+async function transfer<T>(name: string, range: string, work: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try { return await work(); }
+    catch (error) {
+      const code = typeof error.code === 'string' ? error.code : error.cause?.code || error.name;
+      if (error.permanent || !(transientCodes.has(code) || ['TimeoutError', 'AbortError'].includes(error.name))) throw error;
+      if (attempt < 3) { await delay(500 * 2 ** attempt); continue; }
+      throw Object.assign(new Error(`资源下载中断（${code}，已尝试 4 次）：${name}${range ? '，分段 ' + range : ''}。请检查到 d3mya90gbacu0m.cloudfront.net 的网络连接；使用代理时需让 Node.js 走代理（如 TUN 模式），再重试。`, { cause: error }), { code });
+    }
+  }
+}
 async function readBody(response: Response, limit: number) {
   const chunks = []; let size = 0;
   for await (const part of response.body as any) {
@@ -46,38 +59,44 @@ export class Resources {
     if (!validBundle(name)) throw new Error('资源包地址无效。');
     const url = BASE + name;
     if (!refresh && this.file(name)) return this.file(name);
-    for (let attempt = 0; ; attempt++) {
-      let bytes: Buffer;
+    const source = await transfer(name, '', async () => {
+      const response = await this.fetchResource(url, { signal: AbortSignal.timeout(120000) });
+      if (response.status !== 200) { await response.body?.cancel(); throw Object.assign(new Error(`资源下载失败（HTTP ${response.status}）：${name}`), { permanent: true }); }
+      const size = Number(response.headers.get('content-length'));
+      if (size > 128 * 1024 ** 2) { await response.body?.cancel(); throw Object.assign(new Error('资源包超过大小限制。'), { permanent: true }); }
+      if (size > 8 * 1024 ** 2 && response.headers.get('accept-ranges') === 'bytes' && response.headers.get('etag')) {
+        const etag = response.headers.get('etag'); await response.body?.cancel(); return { size, etag, bytes: null };
+      }
+      const bytes = await readBody(response, 128 * 1024 ** 2);
+      if (size > 0 && bytes.length !== size) throw Object.assign(new Error('资源包传输不完整。'), { code: 'ERR_STREAM_PREMATURE_CLOSE' });
+      return { size, etag: null, bytes };
+    });
+    if (source.bytes) return this.put(name, source.bytes);
+    const { size, etag } = source;
+    const width = 1024 ** 2, chunks: Buffer[] = [], starts = Array.from({ length: Math.ceil(size / width) }, (_, i) => i * width);
+    const parts = path.join(this.pack.root, 'parts', sha256(Buffer.from(name + '\n' + etag + '\n' + size)));
+    await eachLimit(starts, async start => {
+      const end = Math.min(size - 1, start + width - 1), range = `bytes=${start}-${end}`;
+      const file = path.join(parts, start + '.part');
       try {
-        const response = await this.fetchResource(url, { signal: AbortSignal.timeout(120000) });
-        if (response.status !== 200) { await response.body?.cancel(); throw Object.assign(new Error(`资源下载失败（HTTP ${response.status}）：${name}`), { permanent: true }); }
-        const size = Number(response.headers.get('content-length'));
-        if (size > 128 * 1024 ** 2) { await response.body?.cancel(); throw Object.assign(new Error('资源包超过大小限制。'), { permanent: true }); }
-        if (size > 8 * 1024 ** 2 && response.headers.get('accept-ranges') === 'bytes' && response.headers.get('etag')) {
-          const etag = response.headers.get('etag'); await response.body?.cancel();
-          const width = 1024 ** 2, chunks: Buffer[] = [], starts = Array.from({ length: Math.ceil(size / width) }, (_, i) => i * width);
-          const parts = path.join(this.pack.root, 'parts', sha256(Buffer.from(name + '\n' + etag + '\n' + size)));
-          await eachLimit(starts, async start => {
-            const end = Math.min(size - 1, start + width - 1);
-            const file = path.join(parts, start + '.part');
-            try {
-              const stored = fs.readFileSync(file), chunk = stored.subarray(32);
-              if (stored.length === end - start + 33 && sha256(chunk) === stored.subarray(0, 32).toString('hex')) { chunks[start / width] = chunk; return; }
-            } catch (error) { if (error.code !== 'ENOENT') throw error; }
-            const part = await this.fetchResource(url, { signal: AbortSignal.timeout(120000), headers: { range: `bytes=${start}-${end}`, 'if-range': etag } });
-            if (part.status !== 206 || part.headers.get('content-range') !== `bytes ${start}-${end}/${size}` || etag && part.headers.get('etag') !== etag) {
-              await part.body?.cancel(); throw Object.assign(new Error('分段响应的版本或范围不匹配。'), { permanent: true });
-            }
-            const chunk = await readBody(part, end - start + 1);
-            if (chunk.length !== end - start + 1) throw new Error('资源分段传输不完整。');
-            writeAtomicFileSync(file, Buffer.concat([Buffer.from(sha256(chunk), 'hex'), chunk]));
-            chunks[start / width] = chunk;
-          }, 2);
-          bytes = Buffer.concat(chunks);
-        } else bytes = await readBody(response, 128 * 1024 ** 2);
-      } catch (error) { if (error.permanent || attempt >= 1) throw error; continue; }
-      return this.put(name, bytes);
-    }
+        const stored = fs.readFileSync(file), chunk = stored.subarray(32);
+        if (stored.length === end - start + 33 && sha256(chunk) === stored.subarray(0, 32).toString('hex')) { chunks[start / width] = chunk; return; }
+      } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      // Retry each transfer independently: a later reset must not consume the
+      // retry budget of another segment or restart the whole resource bundle.
+      const chunk = await transfer(name, range, async () => {
+        const part = await this.fetchResource(url, { signal: AbortSignal.timeout(120000), headers: { range, 'if-range': etag } });
+        if (part.status !== 206 || part.headers.get('content-range') !== `bytes ${start}-${end}/${size}` || part.headers.get('etag') !== etag) {
+          await part.body?.cancel(); throw Object.assign(new Error(`分段响应的版本或范围不匹配：${name}，${range}（HTTP ${part.status}）。`), { permanent: true });
+        }
+        const chunk = await readBody(part, end - start + 1);
+        if (chunk.length !== end - start + 1) throw Object.assign(new Error('资源分段传输不完整。'), { code: 'ERR_STREAM_PREMATURE_CLOSE' });
+        return chunk;
+      });
+      writeAtomicFileSync(file, Buffer.concat([Buffer.from(sha256(chunk), 'hex'), chunk]));
+      chunks[start / width] = chunk;
+    }, 2);
+    return this.put(name, Buffer.concat(chunks));
   }
   save() { saveManifest(this.pack.root, this.pack.manifest); }
 }

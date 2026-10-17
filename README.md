@@ -67,6 +67,8 @@ DOTABYSS 会检查公开客户端对应的资源版本和目录校验值。目�
 
 **提示 Python 环境不存在：** 安装 Python 后，在项目根目录运行 `npm run setup:python`，为当前游戏安装依赖；Windows 用户也可双击 `install-python.cmd`。
 
+**闪耀星骑士提示 `read ECONNRESET`：** 下载连接被重置。程序会对失败请求和分段退避重试，并保留已完成的缓存。下载由 Node.js 发起，不会自动使用浏览器或 Windows 系统代理；使用代理时可开启 TUN 模式，确认 `node.exe` 和 `d3mya90gbacu0m.cloudfront.net` 走可用线路，再重试原任务。持续失败时请保留 `parsed-data/twinkle-star-knights/state/twinkle-status.json`，其中包含失败资源包和错误详情。
+
 **下载完成但页面没有变化：** 点击刷新，并查看任务提示；部分资源可能仍未获得或尚未适配。
 
 **动画或视频无法播放：** 使用支持 WebGL 的现代浏览器并启用硬件加速。不同浏览器支持的音视频编码不同。

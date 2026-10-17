@@ -31,7 +31,7 @@ export async function collect(root: string, options: any = {}) {
     async function download(assetIds: string[], phase: string) {
       const bundles = [...new Set<string>(assetIds.flatMap(id => catalog.assets[id]?.bundles || []))].filter(b => !visited.has(b));
       state.phase = phase; state.targets += bundles.length; publish();
-      await eachLimit(bundles, async name => { visited.add(name); try { await resources.get(name); } catch (error) { state.failed++; state.errors.push({ bundle: name, error: error.message }); } finally { state.checked++; publish(); } }); resources.save();
+      await eachLimit(bundles, async name => { visited.add(name); try { await resources.get(name); } catch (error) { state.failed++; state.errors.push({ bundle: name, error: error.message }); } finally { state.checked++; publish(); } }, 2); resources.save();
     }
     await download(ids, scope === 'catalog' ? 'icons' : scope);
     if (['all', 'stories'].includes(scope)) {
