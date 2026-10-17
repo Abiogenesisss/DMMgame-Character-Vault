@@ -11,8 +11,9 @@ const { extract } = require('./extract.ts');
 const { selectRoles } = require('./selection.ts');
 const { ensureVoiceMapping, roleVoiceSpecs, syncCachedVoices } = require('./character-voices.ts');
 const { COLLECTION_SCOPES, collectionScope, wantsDependency } = require('./collection-scope.ts');
+const { ensureStoryUi, publishStoryUi } = require('./story-ui.ts');
 
-async function collect(root, { roles, concurrency = 4, retryMissing = false, scope, voicesOnly, fetchResource = fetchPublicResource }: any = {}) {
+async function collect(root, { roles, concurrency = 4, retryMissing = false, scope, voicesOnly, fetchResource = fetchPublicResource, prepareUi = ensureStoryUi }: any = {}) {
   scope = collectionScope({ scope, voicesOnly }); voicesOnly = scope === 'voices';
   if (!Array.isArray(roles) || !roles.length || roles.some(id => typeof id !== 'string' || !/^1\d{5}$/.test(id))) {
     throw new Error('请指定要获取的角色：npm run collect:flower -- --roles 162403');
@@ -20,6 +21,16 @@ async function collect(root, { roles, concurrency = 4, retryMissing = false, sco
   const catalog = ensureCatalog(root);
   roles = roles.map(id => baseId(id, catalog));
   if (roles.some(id => !catalog.characters.some(character => character.id === id))) throw new Error('角色未被索引。');
+  if (['all', 'stories', 'ui'].includes(scope)) {
+    const file = path.join(root, 'state/flower-status.json');
+    const state = { state: 'running', roles, scope, voicesOnly: false, phase: 'ui', pid: process.pid, started: new Date().toISOString(), targets: 0, checked: 0, failed: 0 };
+    const save = () => writeAtomicFileSync(file, JSON.stringify(state));
+    try {
+      save(); const ui = await prepareUi(root, { fetchResource, onProgress: progress => { Object.assign(state, progress); save(); } });
+      publishStoryUi(root, ui);
+      if (scope === 'ui') { Object.assign(state, { state: 'ready', phase: 'finished', finished: new Date().toISOString() }); save(); return state; }
+    } catch (error) { Object.assign(state, { state: 'failed', error: error.message, finished: new Date().toISOString() }); save(); throw error; }
+  }
   const pack = loadPack(path.join(root, 'cache'));
   roles = [...new Set<string>(roles)];
   const voiceMapping = ['all', 'voices'].includes(scope) ? ensureVoiceMapping(root, { manifest: pack.manifest }) : null;

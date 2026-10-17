@@ -1,0 +1,51 @@
+#story-dialog[data-story-engine="minashigo"]{width:min(1328px,calc(100vw - 24px),calc((100dvh - 138px)*1.7778));max-width:none;padding:12px;background:#17150f;color:#ded8ca;border:1px solid #8d805e;border-top:1px solid #8d805e;box-shadow:0 24px 90px #0009}
+#story-dialog[data-story-engine="minashigo"] .dialog-header{margin:0 0 10px;min-height:28px}
+#story-dialog[data-story-engine="minashigo"] .dialog-header h2{font-size:15px;color:#e8e0cf}
+#story-dialog[data-story-engine="minashigo"] .close-button{width:30px;height:30px;background:#24211a;color:#e8e0cf;border-color:#75684b}
+#minashigo-reader{font-family:MinashigoStory,"Yu Mincho","Hiragino Mincho ProN",serif}
+#minashigo-reader .minashigo-story-stage{position:relative;aspect-ratio:16/9;overflow:hidden;background:#000;isolation:isolate;cursor:pointer;container-type:inline-size;border:3px ridge #7d795c;box-shadow:0 0 0 1px #242016,inset 0 0 0 1px #9b956d}
+#minashigo-reader .minashigo-story-background{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#minashigo-reader .minashigo-story-actors{position:absolute;inset:0;pointer-events:none}
+#minashigo-reader .minashigo-story-actor{position:absolute;height:auto;max-width:none;max-height:none;transform-origin:center}
+#minashigo-reader .dialogue{position:absolute;left:2%;right:2%;bottom:2%;min-height:0;padding:1.5% 3%;background:#f2ead9e8;color:#2f0c09;white-space:pre-wrap}
+#minashigo-reader .minashigo-native-ui{position:absolute;inset:0;pointer-events:none}
+#minashigo-reader .minashigo-native-dialogue{position:absolute;inset:0;pointer-events:none;white-space:pre-wrap}
+#minashigo-reader .minashigo-native-dialogue strong,#minashigo-reader .minashigo-native-dialogue p{position:absolute;margin:0;padding:0;font-weight:400;white-space:pre-wrap;text-shadow:none;overflow-wrap:anywhere}
+#minashigo-reader .minashigo-native-part{position:absolute;box-sizing:border-box;pointer-events:none;white-space:pre-wrap;display:flex;align-items:center;justify-content:center;font-weight:400}
+#minashigo-reader .minashigo-native-button{position:absolute;pointer-events:auto;margin:0;padding:0;min-width:0;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:transparent;cursor:pointer;touch-action:manipulation}
+#minashigo-reader .minashigo-native-button:hover{background:#fff2;filter:none}
+#minashigo-reader .minashigo-native-button:focus-visible{outline:2px solid #fff4c4;outline-offset:2px}
+#minashigo-reader .minashigo-native-button:disabled{cursor:default;background:transparent;opacity:1}
+#minashigo-reader .minashigo-native-popup{position:absolute;inset:0;z-index:5;background:#0002;cursor:default}
+#minashigo-reader .minashigo-log-lines{position:absolute;overflow-y:auto;overscroll-behavior:contain;padding:4cqw;box-sizing:border-box;scrollbar-color:#987163 #0001;scrollbar-width:thin;color:#301b16;font-size:max(12px,2.2cqw);line-height:1.3}
+#minashigo-reader .minashigo-log-line{display:grid;grid-template-columns:max(24px,3.8cqw) minmax(0,1fr);column-gap:max(6px,1.4cqw);align-items:start;margin-bottom:5.2cqw;white-space:pre-wrap}
+#minashigo-reader .minashigo-log-line:last-child{margin-bottom:1cqw}
+#minashigo-reader .minashigo-log-content{display:block;grid-column:2;min-width:0;margin:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;white-space:inherit;overflow-wrap:anywhere}
+#minashigo-reader .minashigo-log-content strong{display:block;margin:0 0 .25cqw;font:inherit;color:#8a4333}
+#minashigo-reader .minashigo-log-text{display:block;margin:0;font:inherit;color:inherit;line-height:inherit}
+#minashigo-reader .minashigo-log-jump{cursor:pointer;-webkit-user-select:text;user-select:text}
+#minashigo-reader .minashigo-log-jump:hover{background:#a1482e0d}
+#minashigo-reader .minashigo-log-jump:focus-visible{outline:2px solid #8a4333;outline-offset:4px}
+#minashigo-reader .minashigo-log-replay{grid-column:1;grid-row:1;display:grid;place-items:center;align-self:start;width:max(24px,3.8cqw);height:max(24px,3.8cqw);min-width:0;min-height:0;margin:-.25cqw 0 0;padding:0;background:transparent;border:0;border-radius:0;color:#a1482e;cursor:pointer}
+#minashigo-reader .minashigo-log-replay svg{display:block;width:100%;height:100%;pointer-events:none}
+#minashigo-reader .minashigo-log-replay:hover{color:#bc5738}
+#minashigo-reader .minashigo-log-replay:focus-visible{outline:2px solid #8a4333;outline-offset:3px}
+#minashigo-reader .minashigo-volume-slider{position:absolute;appearance:none;-webkit-appearance:none;background:transparent;margin:0;padding:0;border:0;outline-offset:3px;cursor:pointer}
+#minashigo-reader .minashigo-volume-slider::-webkit-slider-runnable-track{height:.8cqw;background:transparent}
+#minashigo-reader .minashigo-volume-slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;background:var(--slider-thumb) center/contain no-repeat;width:2.735cqw;height:2.735cqw;margin-top:-.968cqw;border:0}
+#minashigo-reader .minashigo-volume-slider::-moz-range-track{height:.8cqw;background:transparent}
+#minashigo-reader .minashigo-volume-slider::-moz-range-thumb{background:var(--slider-thumb) center/contain no-repeat;width:2.735cqw;height:2.735cqw;border:0}
+#minashigo-reader .minashigo-next-cursor{animation:minashigo-cursor 1.25s ease-in-out infinite}
+#minashigo-reader .reader-controls{color:#ded8ca}
+.minashigo-story-extras{display:flex;align-items:center;justify-content:flex-end;gap:12px;width:100%;box-sizing:border-box;padding:8px 12px 0;font:12px/1.4 system-ui,sans-serif}
+.minashigo-story-extras:empty{display:none}
+.minashigo-diary-audio{flex:1;min-width:0}
+#minashigo-reader .minashigo-position{min-width:56px;text-align:center;font-variant-numeric:tabular-nums}
+#minashigo-reader .minashigo-diary-audio{display:block;width:100%;height:32px;margin-top:4px}
+#minashigo-reader:fullscreen{display:flex;flex-direction:column;justify-content:center;align-items:center;background:#090907;padding:12px;box-sizing:border-box}
+#minashigo-reader:fullscreen .minashigo-story-stage{width:min(100%,calc((100dvh - 112px)*1.7778));flex:none}
+#minashigo-reader:fullscreen:has(.minashigo-diary-audio) .minashigo-story-stage{width:min(100%,calc((100dvh - 180px)*1.7778))}
+#minashigo-reader:fullscreen .reader-controls{width:min(100%,1280px);flex:none}
+@keyframes minashigo-cursor{0%,100%{opacity:1;transform:translateY(0)}50%{opacity:.55;transform:translateY(3px)}}
+@media(prefers-reduced-motion:reduce){#minashigo-reader .minashigo-next-cursor{animation:none}}
+@media(max-width:600px){#story-dialog[data-story-engine="minashigo"]{width:calc(100vw - 12px);padding:6px}#story-dialog[data-story-engine="minashigo"] .dialog-header h2{font-size:13px}}

@@ -73,7 +73,25 @@
     </section>
     <footer class="page-footer"><span>DMMgame Character Vault</span><span id="footer-game">角色资源收藏与鉴赏</span></footer>
   </main>
-  <dialog id="discovery-dialog" class="discovery-dialog" aria-labelledby="discovery-title"><header class="dialog-header"><div><small id="discovery-game"></small><h2 id="discovery-title">拉取新角色</h2></div><button class="close-button" data-close aria-label="关闭拉取新角色">×</button></header><form id="discovery-form"><label class="discovery-field" for="discovery-ids">角色编号或范围 <span>可选</span></label><textarea id="discovery-ids" rows="3" maxlength="6000" aria-describedby="discovery-hint" placeholder="留空自动更新；也可填写 ID 或 ID 范围"></textarea><p id="discovery-hint" class="note"></p><p class="note">这里只补充角色清单和头像，立绘、CG 与语音可进入角色后下载。</p><div class="discovery-actions"><button id="discovery-submit" class="primary-button" type="submit">开始拉取</button></div></form><section id="discovery-result" class="discovery-result" aria-live="polite" hidden><p id="discovery-message"></p><p id="discovery-warning" class="note" hidden></p><div id="discovery-roles" class="discovery-roles"></div></section></dialog>
+  <dialog id="discovery-dialog" class="discovery-dialog" aria-labelledby="discovery-title">
+    <header class="dialog-header"><div><small id="discovery-game"></small><h2 id="discovery-title">拉取新角色</h2></div><button class="close-button" data-close aria-label="关闭角色列表更新">×</button></header>
+    <form id="discovery-form">
+      <div id="discovery-ids-field"><label class="discovery-field" for="discovery-ids">角色编号或范围 <span>可选</span></label><textarea id="discovery-ids" rows="3" maxlength="6000" aria-describedby="discovery-hint" placeholder="留空自动更新；也可填写 ID 或 ID 范围"></textarea></div>
+      <div id="discovery-har-field" hidden>
+        <label class="discovery-field" for="discovery-har">千年战争 HAR 文件</label>
+        <div id="discovery-har-picker" class="har-picker">
+          <input id="discovery-har" type="file" accept=".har,.json,application/json" aria-describedby="discovery-har-meta discovery-hint">
+          <span class="har-picker-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 12h6M9 16h4"/></svg></span>
+          <span class="har-picker-copy"><strong id="discovery-har-name">选择 HAR 文件</strong><small id="discovery-har-meta">支持 .har / .json · 点击浏览本地文件</small></span>
+          <span id="discovery-har-action" class="har-picker-action" aria-hidden="true">选择文件 ↗</span>
+        </div>
+        <p class="note">只读取资源清单和名称表，不保存完整 HAR，也不导入其中的账号请求、立绘或 CG。</p>
+      </div>
+      <p id="discovery-hint" class="note"></p><p class="note">立绘、CG 与语音可进入角色后按需下载。</p>
+      <div class="discovery-actions"><button id="discovery-submit" class="primary-button" type="submit">开始拉取</button></div>
+    </form>
+    <section id="discovery-result" class="discovery-result" aria-live="polite" hidden><p id="discovery-message"></p><p id="discovery-warning" class="note" hidden></p><div id="discovery-roles" class="discovery-roles"></div></section>
+  </dialog>
   <dialog id="image-dialog" class="image-dialog" aria-labelledby="image-title"><header class="dialog-header"><div><small>角色 CG</small><h2 id="image-title"></h2></div><button class="close-button" data-close aria-label="关闭 CG">×</button></header><img id="cg-image" alt="CG 大图"></dialog>
   <dialog id="motion-dialog" class="motion-dialog" aria-labelledby="motion-title"><header class="dialog-header"><div><small>动态鉴赏</small><h2 id="motion-title"></h2></div><button class="close-button" data-close aria-label="关闭动态素材">×</button></header><div id="motion-stage" class="motion-stage"></div><label class="animation-control">动作<select id="animation-select" aria-label="选择动画动作"></select></label><p id="motion-note" class="note"></p></dialog>
   <dialog id="story-dialog" class="story-dialog" aria-labelledby="story-title"><div class="dialog-header"><h2 id="story-title"></h2><button class="close-button" data-close aria-label="关闭剧情">×</button></div><div id="story-reader"></div></dialog>

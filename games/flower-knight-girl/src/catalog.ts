@@ -6,6 +6,8 @@ const { md5, baseId, validId, storySpec, bloomSpecs } = require('./format.ts');
 const { characterAliases } = require('./character-identity.ts');
 const { isMaterialId } = require('./character-types.ts');
 const { readCharacterMetadata } = require('./character-metadata.ts');
+const { readDynamicCgMetadata } = require('./dynamic-cg.ts');
+const { prepareLibrary } = require('../viewer/character-content.ts');
 const CATALOG_VERSION = 4;
 const resourceSignature = records => md5([...new Set<string>(records.filter(record => /\/character\/dmm\/(i|stand)\//.test(record.url))
   .map(record => [record.url.split('?')[0], record.status, record.body].join(':')))].sort().join('\n'));
@@ -69,8 +71,8 @@ function buildCatalog(root) {
   // Retain confirmed legacy story URLs during a metadata migration, without
   // opening a scenario body or requesting guessed evolution scripts.
   const catalogFile = path.join(root, 'metadata/catalog.json');
+  const previous = fs.existsSync(catalogFile) ? JSON.parse(fs.readFileSync(catalogFile, 'utf8')) : null;
   if (fs.existsSync(catalogFile)) {
-    const previous = JSON.parse(fs.readFileSync(catalogFile, 'utf8'));
     for (const spec of previous.stories || []) if (validId(spec.character) && captured.has(spec.url) && !stories.some(item => item.id === spec.id)) stories.push(spec);
   }
   const output = { version: CATALOG_VERSION, aliases, resourceSignature: resourceSignature(records), generated: new Date().toISOString(), capturedIcons: icons.size,
@@ -78,6 +80,9 @@ function buildCatalog(root) {
     characterMetadataSource: metadata?.source || null, characterMetadataSignature: metadata?.signature || null,
     excludedIconBodies: [...new Set([...candidates].filter(isMaterialId).map(id => icons.get(md5('icon_l_' + id))?.body).filter(Boolean))],
     characters: [...characters.values()].sort((a, b) => Number(a.id) - Number(b.id)), stories };
+  const libraryFile = path.join(root, 'library/index.json');
+  const library = fs.existsSync(libraryFile) ? JSON.parse(fs.readFileSync(libraryFile, 'utf8')) : null;
+  prepareLibrary(output, previous, library, readDynamicCgMetadata(root));
   fs.mkdirSync(path.join(root, 'metadata'), { recursive: true });
   fs.writeFileSync(knownFile, JSON.stringify(identities));
   fs.writeFileSync(path.join(root, 'metadata/catalog.json'), JSON.stringify(output));
@@ -89,6 +94,9 @@ function ensureCatalog(root) {
   // Custom catalogs can opt in with explicit forms and aliases. Generated
   // catalogs refresh when new portrait/icon metadata arrives in another HAR.
   if ([2, 3, CATALOG_VERSION].includes(catalog?.version) && catalog.aliases) {
+    const dynamicCount = catalog.characters.filter(character => character.hasDynamicCg === true).length;
+    prepareLibrary(catalog, readDynamicCgMetadata(root));
+    let changed = dynamicCount !== catalog.characters.filter(character => character.hasDynamicCg === true).length;
     const records = Object.values<any>(loadPack(path.join(root, 'cache')).manifest.routes).flat();
     // Clearing download originals must never discard the saved character list.
     if (!records.length) {
@@ -96,7 +104,6 @@ function ensureCatalog(root) {
       fs.writeFileSync(file, JSON.stringify(catalog));
       return catalog;
     }
-    let changed = false;
     const playable = catalog.characters.filter(character => !isMaterialId(character.id));
     if (playable.length !== catalog.characters.length) { catalog.characters = playable; catalog.aliases = characterAliases(playable); catalog.stories = (catalog.stories || []).filter(story => validId(story.character)); changed = true; }
     for (const character of catalog.characters) for (const key of ['flower', 'flowerId', 'flowerCandidates', 'flowerUnavailable']) {

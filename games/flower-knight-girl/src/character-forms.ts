@@ -8,6 +8,7 @@ const { baseId, portraitSpecs } = require('./format.ts');
 const { characterAliases } = require('./character-identity.ts');
 const { readSelection, selectRoles } = require('./selection.ts');
 const { mergeCharacterName } = require('./character-metadata.ts');
+const { prepareLibrary } = require('../viewer/character-content.ts');
 
 // Repairs metadata only. Media files and scenario bodies are never opened.
 function mergeCharacterForms(index, catalog, manifest, selected, savedImages = []) {
@@ -63,6 +64,7 @@ function mergeCharacterForms(index, catalog, manifest, selected, savedImages = [
   index.images = [...images.values()].filter(image => !excludedIcons.has(image.id) || referenced.has(image.file));
   for (const character of index.characters) character.voiceSaved = (index.audio || [])
     .filter(item => item.context === 'character' && (item.parent === character.id || item.characters?.includes(character.id))).length;
+  prepareLibrary(index, catalog);
   index.version = 3;
   index.stats = { ...index.stats, characters: index.characters.length, icons: index.images.filter(item => item.category === 'icon').length };
   index.generated = new Date().toISOString();

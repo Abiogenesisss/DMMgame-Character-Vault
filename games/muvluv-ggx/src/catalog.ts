@@ -4,7 +4,7 @@ const fs = require('node:fs'), path = require('node:path');
 const { ORIGIN, validId, resourceKind, decodeData } = require('./format.ts');
 const { parseAddressables } = require('./addressables.ts');
 const { fetchPublicResource } = require('../../../app/public-fetch.ts');
-const RARITIES = [5, 3, 1].map(id => ({ id, label: '★' + id }));
+const RARITIES = [{ id: 5, label: 'SSR' }, { id: 3, label: 'SR' }, { id: 1, label: 'R' }];
 function voiceCategory(prefix, code) {
   if (prefix === 'ASCB' || /^(?:Quest|Maze)/.test(code)) return ['battle', '战斗'];
   if (prefix === 'ASS' || /^(?:Enhance|LimitBreak|FavoritePresent|Present)/.test(code)) return ['growth', '养成'];
@@ -44,30 +44,61 @@ function assetsFromCatalogs(catalogs, source) {
   }
   return { assets, conflicts: [...conflicts] };
 }
+function applyMasterMappings(catalog, master) {
+  const table = kind => master[0].filter(row => Array.isArray(row) && row[0] === kind).map(row => row[1]);
+  const characters = new Map<string, any>(catalog.characters.map(character => [character.id, character]));
+  const people = new Map(table(41).map(row => [row[0], row]));
+  const members = table(330);
+  for (const character of catalog.characters) {
+    const person = people.get(character.personId), parent = Number(person?.[10]);
+    // A duo uses one member's portal background. Require the explicit member
+    // relation as well, so sharing a background alone never merges people.
+    if (parent !== character.personId && people.has(parent)
+      && catalog.characters.some(role => role.personId === parent)
+      && members.some(row => String(row[1]) === character.id && row[2] === parent && row[3] === 2)) character.parentPersonId = parent;
+  }
+  const owners = new Map<any, string>(catalog.scenes.filter(scene => scene.character).map(scene => [scene.episodeId, scene.character]));
+  // The chapter's still table is authoritative when its resource ID differs
+  // from the card ID (for example, duo 500301 uses CG c500302).
+  for (const row of table(183)) {
+    const character = characters.get(owners.get(row[2]));
+    if (!character || typeof row[4] !== 'string') continue;
+    for (const [kind, prefix] of [['cg', 'TSTX/'], ['motions', 'SBSX/']]) {
+      const address = prefix + row[4];
+      if (catalog.assets[address] && !character[kind].includes(address)) character[kind].push(address);
+    }
+  }
+  return catalog;
+}
 function buildCatalog(master, catalogs, source) {
   if (!Array.isArray(master) || !Array.isArray(master[0])) throw new Error('角色主数据格式无效。');
   const rows = master[0], table = kind => rows.filter(row => Array.isArray(row) && row[0] === kind).map(row => row[1]);
   // These union IDs/column positions are verified against this client's master
   // data and captured scenes. Fail closed if a future schema changes them.
-  const cards = table(53), people = new Map(table(41).map(row => [row[0], row[1]]));
+  const cards = table(53), people = new Map(table(41).map(row => [row[0], row]));
+  const teams = new Map(table(58).map(row => [row[0], row]));
   if (!cards.length || cards.some(row => !Array.isArray(row) || row.length !== 42 || !validId(String(row[0])) || !people.has(row[1]) || typeof row[8] !== 'string')) throw new Error('不支持的角色主数据版本。');
   const { assets, conflicts } = assetsFromCatalogs(catalogs, source), voiceLabels = new Map(table(59).map(row => [row[4], row[3]]));
   const characters = cards.map(row => {
-    const id = String(row[0]), resourceId = row[8], name = people.get(row[1]) + (row[3] ? '「' + row[3] + '」' : '');
+    const person = people.get(row[1]), team = teams.get(person[4]);
+    const id = String(row[0]), resourceId = row[8], name = person[1] + (row[3] ? '「' + row[3] + '」' : '');
     const voiceCategories = { ASCB: ['battle', '战斗'], ASCM: ['daily', '日常'], ASCS: ['season', '季节'], ASS: ['growth', '养成'] };
     const voices = Object.values<any>(assets).filter(asset => asset.type === 'UnityEngine.AudioClip' && Object.hasOwn(voiceCategories, asset.address.split('/')[0]) && asset.address.split('/')[1] === resourceId)
       .map(asset => { const [prefix, , filename] = asset.address.split('/'), code = filename.replace(/\.ogg$/, '');
         const [group, groupLabel] = voiceCategory(prefix, code);
         return { address: asset.address, code, label: voiceLabels.get(code) || code, group, groupLabel }; });
     const choose = addresses => addresses.filter(address => assets[address]);
-    return { id, personId: row[1], name, shortName: people.get(row[1]), subtitle: row[3], resourceId,
+    return { id, personId: row[1], name, shortName: person[1], subtitle: row[3], resourceId, styleOrder: row[4],
+      profile: { reading: person[2], order: person[3], teamId: person[4], team: team?.[1] },
+      portal: { background: choose(['TCNP/' + (person[10] || row[1])])[0] || null,
+        teamLogo: choose(['TTL/' + team?.[3]])[0] || null },
       rarityId: RARITIES.some(value => value.id === row[5]) ? row[5] : null,
       rarityLabel: RARITIES.find(value => value.id === row[5])?.label || '未标注',
       icon: choose(['ICCS/' + resourceId, 'ICV/' + resourceId])[0] || null,
       // ICS is a 300x240 card preview. Column 9 is the explicit story costume
       // override; cards without one use their own resource ID for the full stand.
       portraitResourceId: row[9] || resourceId,
-      portraits: choose(['SCS/' + (row[9] || resourceId)]), cg: choose(['TSTX/c' + resourceId]),
+      portraits: choose(['SCS/' + (row[9] || resourceId)]), cardPortraits: choose(['SBC/' + resourceId]), cg: choose(['TSTX/c' + resourceId]),
       motions: choose(['SBSX/c' + resourceId]), voices, episodes: [] };
   });
   const ids = new Set(characters.map(character => character.id));
@@ -75,7 +106,7 @@ function buildCatalog(master, catalogs, source) {
   for (const row of table(104)) if (ids.has(String(row[1]))) episodeOwners.set(row[2], String(row[1]));
   const sceneMeta = table(13).map(row => ({ sceneId: String(row[0]), episodeId: row[1], title: row[5], order: row[2], adult: row[4] === true, character: episodeOwners.get(row[1]) || null }));
   for (const scene of sceneMeta) if (scene.character) characters.find(character => character.id === scene.character).episodes.push(scene);
-  return { version: 1, game: 'muvluv-ggx', characters, assets, conflicts, scenes: sceneMeta, source };
+  return applyMasterMappings({ version: 1, game: 'muvluv-ggx', characters, assets, conflicts, scenes: sceneMeta, source }, master);
 }
 async function prepareCatalog(root, { fetchResource = fetchPublicResource }: any = {}) {
   const analysis = path.join(root, 'metadata'), source = readJson(path.join(analysis, 'source.json'), {});
@@ -99,5 +130,9 @@ async function prepareCatalog(root, { fetchResource = fetchPublicResource }: any
   const catalog = buildCatalog(readJson(masterFile), catalogs, source);
   writeJson(path.join(analysis, 'catalog.json'), catalog); return catalog;
 }
-const readCatalog = root => readJson(path.join(root, 'metadata/catalog.json'), { characters: [], assets: {}, scenes: [] });
+function readCatalog(root) {
+  const catalog = readJson(path.join(root, 'metadata/catalog.json'), { characters: [], assets: {}, scenes: [] });
+  const master = readJson(path.join(root, 'metadata/master-data.json'), null);
+  return master ? applyMasterMappings(catalog, master) : catalog;
+}
 export { RARITIES, readJson, writeJson, bundleUrl, assetsFromCatalogs, buildCatalog, prepareCatalog, readCatalog, voiceCategory };

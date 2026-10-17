@@ -4,6 +4,7 @@ import { loadNativeUi } from './native-ui.ts';
 import { Player } from './spine-player.ts';
 import { MuvStoryUi } from './story-ui.ts';
 import { animation, FACES, plain, seconds } from './story-format.ts';
+import { StoryControls } from '../../../app/viewer/story-controls.ts';
 const node=(tag,cls,text?: any)=>{const el=document.createElement(tag);el.className=cls;if(text)el.textContent=text;return el;};
 export class MuvStoryPlayer{
   declare token: any;
@@ -44,13 +45,15 @@ export class MuvStoryPlayer{
   declare motionSpeed: any;
   declare onError: any;
   declare container: any;
+  declare toolbar: StoryControls;
 
   constructor(container,{asset,assetRoot,positionKey,onError=()=>{}}){
     Object.assign(this,{container,asset,assetRoot,positionKey,onError});this.token=0;this.actors=new Map();this.animations=new Set<string>();this.auto=false;this.skip=false;
     this.audio=new StoryAudio({asset});this.stage=node('div','muv-story-stage');this.stage.tabIndex=0;this.stage.setAttribute('aria-label','Muv-Luv 剧情，点击或按空格继续');
     this.background=node('img','muv-story-background');this.background.alt='剧情背景';this.background.hidden=true;this.motion=node('div','muv-story-cg');this.actorHost=node('div','muv-story-actors');this.fade=node('div','muv-story-fade');this.error=node('div','muv-story-error');this.error.hidden=true;this.error.setAttribute('role','alert');
-    this.stage.append(this.background,this.motion,this.actorHost,this.fade,this.error);const footer=node('div','muv-story-footer');
-    this.position=node('span','muv-story-position');this.position.setAttribute('aria-live','polite');const close=node('button','secondary-button','关闭剧情'),full=node('button','secondary-button','全屏');close.onclick=()=>container.closest('dialog')?.close();full.onclick=()=>{if(document.fullscreenElement)document.exitFullscreen?.();else container.requestFullscreen?.().catch(()=>{});};footer.append(this.position,full,close);container.replaceChildren(this.stage,footer);
+    this.stage.append(this.background,this.motion,this.actorHost,this.fade,this.error);
+    this.position=node('span','muv-story-position');
+    this.toolbar=new StoryControls(container,{previous:()=>this.engine?.previous(),next:()=>this.next(),restart:()=>this.restart()},{className:'muv-story-footer',position:this.position,onError:this.onError});container.replaceChildren(this.stage,this.toolbar.element);
     this.observer=new ResizeObserver(()=>{this.stage.style.setProperty('--native-unit',this.stage.clientWidth/1920+'px');});this.observer.observe(this.stage);
     this.hold=new HoldForward(this.stage,{canStart:e=>!!this.engine&&!this.ui?.modal&&!this.ui?.logOpen&&!this.ui?.hidden&&!e.target.closest('[role=button],button,input'),onChange:fast=>{this.fast=fast;this.engine?.setFastForward(fast||this.skip);this.setRate();if(fast)this.audio.stop('voice');},onAdvance:()=>this.next()});
     this.click=e=>{if(!e.target.closest('[role=button],button,input')&&!this.ui?.modal&&!this.ui?.logOpen)this.next();};this.stage.addEventListener('click',this.click);
@@ -58,12 +61,13 @@ export class MuvStoryPlayer{
     this.visibility=()=>{if(document.hidden){this.audio.pauseAll();this.clearAuto();}else{this.audio.resumeAll();this.queueAuto();}};document.addEventListener('visibilitychange',this.visibility);
   }
   async load(story){if(story.programVersion!==2)throw new Error('请更新此角色的完整 CG 剧情。');if(!story.ui)throw new Error('请先点击“下载播放器 UI”补齐本地界面。');if(story.complete===false)throw new Error('本章脚本或素材尚未拉完整，请更新完整 CG 剧情。');this.story=story;const token=this.token,data=await loadNativeUi(story.ui,this.asset);if(token!==this.token)return;this.ui=new MuvStoryUi(this,data);
-    this.engine=new StoryEngine(story.program,{reset:()=>this.reset(),stop:()=>this.stopPlayback(),execute:(a,o)=>this.execute(a,o),reveal:()=>this.reveal(),stopVoice:()=>this.audio.stop('voice')},{onLine:(_a,line)=>{localStorage.setItem(this.positionKey,String(line));this.position.textContent=(line+1)+' / '+story.program.dialogue;this.queueAuto();},onEnd:()=>{this.auto=false;this.skip=false;this.position.textContent='本章播放完毕';},onError:e=>this.fail(e)});
+    this.engine=new StoryEngine(story.program,{reset:()=>this.reset(),stop:()=>this.stopPlayback(),execute:(a,o)=>this.execute(a,o),reveal:()=>this.reveal(),stopVoice:()=>this.audio.stop('voice')},{onLine:(_a,line)=>{localStorage.setItem(this.positionKey,String(line));this.toolbar.previous.disabled=line===0;this.toolbar.next.disabled=false;this.toolbar.restart.disabled=false;this.position.textContent=(line+1)+' / '+story.program.dialogue;this.queueAuto();},onEnd:()=>{this.auto=false;this.skip=false;this.toolbar.next.disabled=true;this.position.textContent='本章播放完毕';},onError:e=>this.fail(e)});
     const bookmark=Number(localStorage.getItem(this.positionKey));await this.engine.start({line:Number.isInteger(bookmark)&&bookmark>=0&&bookmark<story.program.dialogue?bookmark:0});this.stage.focus({preventScroll:true});
   }
   clearAuto(){clearTimeout(this.autoTimer);this.autoTimer=null;}
   queueAuto(){this.clearAuto();if(!this.engine?.waiting||this.ui?.modal||this.ui?.logOpen||document.hidden||(!this.auto&&!this.skip))return;this.autoTimer=setTimeout(()=>{if(this.typing||this.audio.voicePlaying&&!this.skip)this.queueAuto();else this.next();},this.skip?90:600);}
   next(){if(this.ui?.hidden){this.ui.hide(false);return;}this.engine?.next();}
+  restart(){if(!this.engine)return;this.ui.setAuto(false);this.hold.stop();this.fast=false;this.setSkip(false);this.ui.close(false);this.ui.closeLog();this.ui.hide(false);return this.engine.start();}
   reveal(){if(!this.typing)return false;clearTimeout(this.typeTimer);this.typing=false;this.ui.text(this.fullText,true);return true;}
   type(text,instant){clearTimeout(this.typeTimer);this.fullText=text;this.typing=!instant&&!this.fast&&!this.skip&&text.length>0;let at=this.typing?0:text.length;const token=this.token;const tick=()=>{if(token!==this.token)return;this.ui.text(text.slice(0,at),at>=text.length);if(at>=text.length){this.typing=false;return;}at++;this.typeTimer=setTimeout(tick,[55,32,12][this.ui.config.speed]||32);};tick();}
   wait(time){return time>0?this.engine.delay(time):Promise.resolve();}
@@ -108,6 +112,6 @@ export class MuvStoryPlayer{
   }
   playVoices(files,token){const next=()=>{if(token!==this.token||!files.length)return;const channel=this.audio.play('voice',files.shift(),{kind:'voice'});if(channel)channel.audio.onended=next;};next();}
   setRate(){for(const spine of this.cg?.spines||[])spine.state.timeScale=(this.motionSpeed||1)*(this.fast||this.skip?8:1);}
-  fail(error){this.error.textContent=error.message;this.error.hidden=false;this.auto=false;this.skip=false;this.clearAuto();this.onError(error);}
-  destroy(){this.hold.destroy();this.ui?.destroy();this.engine?.stop();this.stopPlayback();this.cg?.destroy();for(const actor of this.actors.values())actor.player.destroy();this.actors.clear();this.observer.disconnect();document.removeEventListener('visibilitychange',this.visibility);this.container.replaceChildren();}
+  fail(error){this.error.textContent=error.message;this.error.hidden=false;this.auto=false;this.skip=false;this.toolbar.previous.disabled=this.toolbar.next.disabled=this.toolbar.restart.disabled=true;this.clearAuto();this.onError(error);}
+  destroy(){this.toolbar.destroy();this.hold.destroy();this.ui?.destroy();this.engine?.stop();this.stopPlayback();this.cg?.destroy();for(const actor of this.actors.values())actor.player.destroy();this.actors.clear();this.observer.disconnect();document.removeEventListener('visibilitychange',this.visibility);this.container.replaceChildren();}
 }

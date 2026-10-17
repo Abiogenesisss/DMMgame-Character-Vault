@@ -2,9 +2,10 @@ import {Player} from './spine-player.ts';
 import {readScene,actorPlacement} from './reader-scene.ts';
 import {StoryUi,cleanText} from './story-ui.ts';
 import {SceneTransitions,drawCover} from './scene-transitions.ts';
+import {StoryControls} from '../../../app/viewer/story-controls.ts';
 const node=(tag,cls='',text=''):any=>{const el=document.createElement(tag);el.className=cls;if(text)el.textContent=text;return el;};
 export class GirlsStoryPlayer {
-  stage:any;background:any;actorHost:any;motion:any;ui:StoryUi;footer:any;position:any;previous:any;replayButton:any;observer:any;
+  stage:any;background:any;actorHost:any;motion:any;ui:StoryUi;footer:any;position:any;previous:any;toolbar:StoryControls;observer:any;
   story:any;indices:number[]=[];cursor=0;generation=0;actors=new Map<string,any>();director:any;voice=new Audio();music=new Audio();sound=new Audio();
   musicFile:any;soundToken:any;auto=false;skip=false;timer:any;typeTimer:any;typing=false;fullText='';destroyed=false;events=new AbortController();
   effects:SceneTransitions;animations=new Set<any>();pending=new Set<Promise<any>>();waits=new Set<()=>void>();captured:any;playing=false;movieWaiting=false;fast=false;lastCommand=-1;ended=false;backgroundPlacement:any;
@@ -13,9 +14,9 @@ export class GirlsStoryPlayer {
     this.background=node('img','gc-story-background');this.background.alt='剧情背景';this.background.hidden=true;this.actorHost=node('div','gc-story-actors');this.motion=node('div','gc-story-motion');this.motion.hidden=true;this.stage.append(this.background,this.actorHost,this.motion);
     this.effects=new SceneTransitions(this.stage);
     this.ui=new StoryUi(this.stage,options.asset,{next:()=>this.next(),auto:()=>this.setAuto(!this.auto),skip:()=>this.setSkip(!this.skip),pause:()=>{this.setAuto(false);this.setSkip(false);this.voice.pause();this.talking(false);},settings:()=>this.applyVolume(),history:()=>this.history(),cursor:()=>this.cursor,go:i=>{this.cursor=i;this.showLine(true);},replay:file=>this.replay(file)});
-    this.footer=node('footer','gc-story-footer');this.previous=this.button('上一句',()=>{if(this.cursor>0){this.cursor--;this.showLine(true);}});this.previous.id='previous-line';this.position=node('span','gc-story-position');this.position.id='story-position';
-    this.replayButton=this.button('重听语音',()=>this.replay(this.currentVoice()));this.replayButton.id='replay-voice';
-    const full=this.button('全屏',()=>{if(document.fullscreenElement)document.exitFullscreen?.();else container.requestFullscreen?.().catch(()=>{});}),close=this.button('关闭剧情',()=>container.closest('dialog')?.close());this.footer.append(this.previous,this.position,this.replayButton,full,close);container.replaceChildren(this.stage,this.footer);
+    this.position=node('span','gc-story-position');this.position.id='story-position';
+    this.toolbar=new StoryControls(container,{previous:()=>{if(this.cursor>0){this.cursor--;return this.showLine(true);}},next:()=>this.next(),restart:()=>this.restart()},{className:'gc-story-footer',position:this.position,onError:options.onError});
+    this.footer=this.toolbar.element;this.previous=this.toolbar.previous;this.previous.id='previous-line';container.replaceChildren(this.stage,this.footer);
     this.music.loop=true;this.applyVolume();
     this.observer=new ResizeObserver(()=>{this.stage.style.setProperty('--gc-unit',this.stage.clientWidth/1920+'px');this.ui.fitText();});this.observer.observe(this.stage);
     this.stage.addEventListener('click',e=>{if(!e.target.closest('button,input,label,[role="dialog"]'))this.next();},{signal:this.events.signal});
@@ -23,7 +24,6 @@ export class GirlsStoryPlayer {
     this.voice.addEventListener('ended',()=>{this.talking(false);this.queueAuto();},{signal:this.events.signal});this.voice.addEventListener('pause',()=>this.talking(false),{signal:this.events.signal});
     document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(this.timer);this.voice.pause();this.music.pause();this.sound.pause();}else{if(this.musicFile)this.music.play().catch(()=>{});this.queueAuto();}},{signal:this.events.signal});
   }
-  button(text,callback){const button=node('button','secondary-button',text);button.type='button';button.onclick=callback;return button;}
   async load(story){
     this.story=story;this.indices=story.commands.flatMap((row,index)=>row.command==='mess'?[index]:[]);if(!this.indices.length)throw Error('剧情没有可显示的对白。');
     await this.ui.load(story.ui||this.options.library.storyUi?.file);if(this.destroyed)return;
@@ -146,7 +146,7 @@ export class GirlsStoryPlayer {
     const scene:any=readScene(this.story,commandIndex,this.options.library.skeletons||[],this.options.library.images||[]);
     this.ui.setMode(scene.model?.engine==='video'?'video':'normal');
     this.fullText=cleanText(line.args[1]);this.ui.line(line.args[0]||'',this.fullText);
-    this.position.textContent=`${this.cursor+1} / ${this.indices.length}`;this.previous.disabled=this.cursor===0;this.ui.next.disabled=false;this.replayButton.disabled=!this.currentVoice();
+    this.position.textContent=`${this.cursor+1} / ${this.indices.length}`;this.previous.disabled=this.cursor===0;this.ui.next.disabled=false;this.toolbar.next.disabled=false;this.toolbar.restart.disabled=false;
     try{localStorage.setItem(this.options.positionKey,String(this.cursor));}catch{}
     if(!live){
       await this.setBackground(scene.image,scene.background);if(generation!==this.generation)return;
@@ -164,12 +164,13 @@ export class GirlsStoryPlayer {
   async end(){
     if(this.ended)return;this.ended=true;this.playing=true;this.voice.pause();this.talking(false);this.setAuto(false);this.setSkip(false);const generation=this.generation;
     try{if(this.story.programVersion===3){await this.executeRange(this.lastCommand+1,this.story.commands.length,generation);await Promise.all(this.pending);}}catch(error){if(generation===this.generation)this.options.onError?.(error);}
-    if(generation!==this.generation)return;this.playing=false;this.fast=false;this.ui.next.disabled=true;this.position.textContent=`${this.indices.length} / ${this.indices.length} · 已结束`;
+    if(generation!==this.generation)return;this.playing=false;this.fast=false;this.ui.next.disabled=true;this.toolbar.next.disabled=true;this.position.textContent=`${this.indices.length} / ${this.indices.length} · 已结束`;
   }
+  restart(){if(!this.story||this.destroyed)return;this.setAuto(false);this.setSkip(false);this.ui.closeModal();this.ui.hide(false);this.cursor=0;return this.showLine(true);}
   next(){if(this.ui.modal||this.movieWaiting)return;if(this.ui.dismissTitle())return;if(this.ui.hidden){this.ui.hide(false);return;}if(this.playing){this.fast=true;this.finishAnimations();return;}if(this.reveal())return;if(this.cursor<this.indices.length-1){this.cursor++;this.showLine();}else this.end();}
   setAuto(value){this.auto=value;this.ui.active('auto',value);if(value){this.skip=false;this.ui.active('skip',false);}this.queueAuto();}
   setSkip(value){this.skip=value;this.ui.active('skip',value);if(value){this.auto=false;this.ui.active('auto',false);this.voice.pause();this.reveal();}this.queueAuto();}
   queueAuto(){clearTimeout(this.timer);if(this.destroyed||document.hidden||(!this.auto&&!this.skip)||this.ui.modal||this.ui.hidden)return;this.timer=setTimeout(()=>{if(this.playing||this.typing||this.ui.title||!this.voice.paused&&!this.skip)this.queueAuto();else this.next();},this.skip?100:1000);}
   fail(error){this.ui.line('',error.message);this.ui.text.setAttribute('role','alert');}
-  destroy(){this.destroyed=true;this.generation++;this.finishAnimations();this.effects.destroy();this.captured=null;clearTimeout(this.timer);clearTimeout(this.typeTimer);this.events.abort();this.observer.disconnect();this.director?.destroy();for(const view of this.actors.values())view.player?.destroy();this.actors.clear();for(const audio of [this.voice,this.music,this.sound]){audio.pause();audio.removeAttribute('src');}this.ui.destroy();this.container.replaceChildren();}
+  destroy(){this.destroyed=true;this.generation++;this.toolbar.destroy();this.finishAnimations();this.effects.destroy();this.captured=null;clearTimeout(this.timer);clearTimeout(this.typeTimer);this.events.abort();this.observer.disconnect();this.director?.destroy();for(const view of this.actors.values())view.player?.destroy();this.actors.clear();for(const audio of [this.voice,this.music,this.sound]){audio.pause();audio.removeAttribute('src');}this.ui.destroy();this.container.replaceChildren();}
 }

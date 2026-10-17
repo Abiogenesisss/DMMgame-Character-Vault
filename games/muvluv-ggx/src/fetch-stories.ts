@@ -52,22 +52,34 @@ async function fetchStories(root, catalog, { roles, fetchResource = fetchPublicR
     try {
       if (!fs.existsSync(file)) {
         access ||= readAccess(root);
+        const captured = access.bodies?.get(id);
+        let bytes = captured;
         let url = access.urls.get(id);
-        if (!url) {
+        const freshUrl = async () => {
           if (blocked || !access.headers['x-client-key']) throw Object.assign(new Error(sessionMessage), { status: 401 });
           const response = await fetchResource(API + '/api/episode/scenes/' + id + '/dataSource', { headers: access.headers, signal: AbortSignal.timeout(30000) });
-          url = dataSource(await readBytes(response, 128 * 1024, '剧情接口'), id);
-        }
+          try { return dataSource(await readBytes(response, 128 * 1024, '剧情接口'), id); }
+          catch (error) { if ([401, 403].includes(error.status)) blocked = true; throw error; }
+        };
         // The signed blob URL is used in memory only, never added to the public
         // pack, index, error text, generated playback documents or saved config.
-        let bytes;
-        try { bytes = await readBytes(await fetchResource(sceneUrl(url, id), { signal: AbortSignal.timeout(30000) }), 16 * 1024 * 1024, '剧情脚本'); }
-        catch (error) { throw Object.assign(new Error(error.status ? '剧情脚本 HTTP ' + error.status : '剧情脚本下载失败。'), { status: error.status }); }
+        if (!bytes) {
+          const cachedUrl = !!url;
+          url ||= await freshUrl();
+          const download = async () => readBytes(await fetchResource(sceneUrl(url, id), { signal: AbortSignal.timeout(30000) }), 16 * 1024 * 1024, '剧情脚本');
+          try { bytes = await download(); }
+          catch (error) {
+            // A signed blob can expire while the game session is still valid.
+            // Refresh that exact scene once; storage never receives API headers.
+            if (cachedUrl && [401, 403, 404].includes(error.status) && access.headers['x-client-key'] && !blocked) { url = await freshUrl(); bytes = await download(); }
+            else throw error;
+          }
+        }
         writeJson(file, sceneRows(bytes, id)); result.saved++;
       }
       if (!source.scenes.includes(id)) source.scenes.push(id);
     } catch (error) {
-      if ([401, 403].includes(error.status)) { blocked = true; result.authRequired = true; }
+      if ([401, 403].includes(error.status)) result.authRequired = true;
       result.errors.push({ scene: id, character: scene.character, error: [401, 403].includes(error.status) ? sessionMessage : '剧情 ' + id + ' 未能下载或校验。' });
       result.missingSceneIds.push(id); result.failed++;
     }

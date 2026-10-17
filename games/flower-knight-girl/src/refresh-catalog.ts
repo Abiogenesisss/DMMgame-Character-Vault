@@ -9,11 +9,14 @@ const { loadPack, routeKey } = require('../../../app/pack.ts');
 const { fetchPublicResource } = require('../../../app/public-fetch.ts');
 const { migrateCharacterForms } = require('./character-forms.ts');
 const { isMaterialId } = require('./character-types.ts');
+const { ensureDynamicCgMetadata } = require('./dynamic-cg.ts');
 const iconSpec = id => ({ character: id, url: BASE + 'assets/ultra/images/character/dmm/i/' + md5('icon_l_' + id) + '.bin' });
 async function refreshCatalog(root, { refresh = false, ids = [], fetchResource = fetchPublicResource, onProgress, allowCachedMetadata = false }: any = {}) {
   const warnings = [];
   try { await ensureCharacterMetadata(root, { refresh, fetchResource }); }
   catch (error) { if (!allowCachedMetadata) throw error; warnings.push('角色资料更新失败，已按现有目录和指定编号继续检查：' + error.message); }
+  try { await ensureDynamicCgMetadata(root, { refresh, fetchResource }); }
+  catch (error) { warnings.push('动态 CG 标记更新失败，已保留现有标记：' + error.message); }
   const catalog = buildCatalog(root);
   const candidates = ids.length ? [...new Set<string>(ids.map(id => catalog.aliases?.[id] || id))].filter(id => !isMaterialId(id)) : catalog.characters.filter(character => !character.iconBody).map(character => character.id);
   const targets = candidates.filter(id => !catalog.characters.find(character => character.id === id)?.iconBody).map(iconSpec);

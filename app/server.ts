@@ -155,7 +155,7 @@ function createServer({ dataRoot = DEFAULT_DATA, gamesRoot = DEFAULT_GAMES, fetc
           const discovery = relative === 'api/discover';
           const serviceKey = discovery ? key + '|discover' : key;
           if (discovery && !adapter.createDiscoveryService) throw fail('这款游戏暂不支持拉取新角色。', 400);
-          const payload = req.method === 'POST' ? JSON.stringify(await readJson(req, 8192)) : undefined;
+          const payload = req.method === 'POST' ? JSON.stringify(await readJson(req, discovery && adapter.catalogHarImport ? 24 * 1024 ** 2 : 8192)) : undefined;
           const request = new Request(origin + '/' + relative + url.search, { method: req.method, headers: req.headers, body: payload });
           let response;
           if (req.method === 'POST') response = await background.handle(project, game, request, discovery);

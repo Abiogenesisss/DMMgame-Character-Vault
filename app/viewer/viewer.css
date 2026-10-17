@@ -59,6 +59,19 @@ p{margin:0;color:var(--muted);font-size:13px;line-height:1.8}
 .discovery-field span{margin-left:8px;color:var(--muted);font-size:11px;font-weight:400}
 .discovery-dialog textarea{display:block;resize:vertical;width:100%;padding:12px;border:1px solid var(--line);background:var(--surface,#f8f8fc);color:var(--ink);font:inherit;font-size:13px;line-height:1.7}
 .discovery-dialog textarea:focus-visible{outline:2px solid var(--teal-ink);outline-offset:3px}
+.har-picker{position:relative;display:flex;align-items:center;gap:14px;min-height:96px;padding:18px;border:1px dashed #c5d5d7;border-radius:var(--radius);background:#f6faf9;transition:border-color .15s,background .15s}
+.har-picker:hover:not(:has(input:disabled)),.har-picker.has-file{border-color:var(--teal-ink);background:#effaf7}
+.har-picker:focus-within{outline:2px solid var(--teal-ink);outline-offset:3px}
+.har-picker:has(input:disabled){opacity:.55}
+#discovery-har{position:absolute;inset:0;z-index:1;width:100%;height:100%;margin:0;padding:0;opacity:0;cursor:pointer}
+#discovery-har:disabled{cursor:default}
+.har-picker-icon{flex:0 0 42px;display:grid;place-items:center;width:42px;height:48px;border:1px solid #cce8e3;border-radius:var(--radius);background:#e5f5f0;color:var(--teal-ink)}
+.har-picker-icon svg{width:25px;height:25px}
+.har-picker-copy{flex:1;min-width:0}
+.har-picker-copy strong{display:block;overflow:hidden;color:var(--ink);font-size:13px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
+.har-picker-copy small{display:block;margin-top:6px;color:var(--muted);font-size:11px;line-height:1.5}
+.har-picker-action{flex-shrink:0;display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid #c6ded8;border-radius:var(--radius);background:#fff;color:var(--teal-ink);font-size:11px;font-weight:650;white-space:nowrap}
+@media(max-width:480px){.har-picker{flex-wrap:wrap;gap:12px;padding:15px}.har-picker-action{margin-left:56px}.har-picker-copy{flex-basis:calc(100% - 56px)}}
 .discovery-actions{display:flex;justify-content:flex-end;margin-top:18px}
 .discovery-result{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
 .discovery-result>p{font-size:13px;line-height:1.8}
@@ -205,6 +218,11 @@ dialog::backdrop{background:#30304e99;backdrop-filter:blur(4px)}
 .animation-control{display:flex;align-items:center;gap:13px;margin-top:18px;color:var(--text);font-size:12px}
 .animation-control select{max-width:80%}
 .story-dialog{width:min(1008px,calc(100% - 26px),max(280px,calc(138dvh - 400px)));padding:20px 24px}
+/* All game readers share this wrapper. Repeated advance clicks must not select
+   the scene, while popup text and editable controls remain selectable. */
+#story-reader{-webkit-user-select:none;user-select:none}
+#story-reader img{-webkit-user-drag:none}
+#story-reader :is([role=dialog],input,textarea,[contenteditable=true]){-webkit-user-select:text;user-select:text}
 .story-stage{position:relative;display:block;width:100%;aspect-ratio:3/2;background:#ebebf2;border-radius:var(--radius);overflow:hidden}
 .story-stage>img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}
 .story-actors{position:absolute;inset:0;pointer-events:none}
@@ -219,6 +237,15 @@ dialog::backdrop{background:#30304e99;backdrop-filter:blur(4px)}
 .dialogue strong{color:var(--teal-ink);font-size:12px;font-weight:700}
 .dialogue p{margin-top:8px;color:var(--ink);font-size:15px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
 .reader-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-top:16px;color:var(--muted);font-size:11px}
+.story-controls.story-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-sizing:border-box;flex-shrink:0;width:100%;min-height:54px;padding:10px 12px;font:12px/1.4 system-ui,sans-serif}
+.story-controls-navigation,.story-controls-window{display:flex;align-items:center;gap:8px}
+.story-controls-window{margin-left:auto}
+.story-controls .secondary-button{min-height:34px;padding:6px 12px;color:inherit;font:inherit;white-space:nowrap;background:transparent;border:1px solid color-mix(in srgb,currentColor 35%,transparent);box-shadow:none}
+.story-controls .secondary-button:hover:not(:disabled){background:color-mix(in srgb,currentColor 10%,transparent)}
+.story-controls .secondary-button:disabled{opacity:.4;cursor:default}
+.story-controls-position{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+#story-dialog:has(.story-controls)>.dialog-header .close-button{display:none}
+@media(max-width:600px){.story-controls.story-controls{gap:6px;padding:8px}.story-controls-navigation,.story-controls-window{gap:4px}.story-controls .secondary-button{min-height:36px;padding:6px 8px;font-size:11px}}
 #toast{position:fixed;z-index:30;bottom:24px;left:50%;max-width:calc(100% - 32px);padding:14px 20px;border-left:4px solid var(--teal);border-radius:var(--radius);background:var(--ink);color:#fff;font-size:12px;line-height:1.6;transform:translateX(-50%);box-shadow:0 5px 20px #4444662e;overflow-wrap:anywhere}
 @media(min-width:1600px){main{padding-top:48px}.catalog{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
 @media(max-width:1100px){

@@ -74,6 +74,10 @@ function configureGame() {
   $('portrait-flower').textContent = profile.glyph;
   $('discovery-game').textContent = profile.label; $('discovery-hint').textContent = profile.discoveryHint || '';
   $('discovery-ids').value = currentSession.discoveryIds || '';
+  const harImport = !!profile.catalogHarImport;
+  $('discover-characters').textContent = $('discovery-title').textContent = profile.discoveryLabel || (harImport ? '导入角色清单' : '拉取新角色');
+  $('discovery-ids-field').hidden = harImport || profile.discoveryIds === false; $('discovery-har-field').hidden = !harImport;
+  $('discovery-har').value = ''; $('discovery-har').required = harImport; renderHarFile();
   document.querySelector<HTMLElement>('.voice-introduction').textContent = profile.voiceDescription || '日常、战斗、养成与季节语音。剧情配音在剧情中播放。';
   $('search').placeholder = profile.features.artists ? '名字、编号或画师' : '角色名字或编号';
   const combined = combinedCg(), label = motionLabel();
@@ -400,7 +404,8 @@ function renderRole(character) {
   }
   renderPortrait(character, resources.portraits.some(item => item.phase === previousPhase) ? previousPhase : resources.portraits[0]?.phase || 'avatar');
   renderVoices(resources.voices);
-  $('role-story-count').textContent = resources.stories.length;
+  const savedStories = resources.stories.filter(story => story.downloaded !== false).length;
+  $('role-story-count').textContent = savedStories === resources.stories.length ? String(savedStories) : savedStories + '/' + resources.stories.length;
   $('role-voice-count').textContent = resources.voices.length;
   $('role-cg-count').textContent = resources.cg.length;
   $('role-motion-count').textContent = resources.motions.length + (combinedCg() ? resources.cg.length : 0);
@@ -409,11 +414,14 @@ function renderRole(character) {
     ? currentSession.profile.missingStoryMessage : '暂无已保存的角色剧情。';
   for (const metadata of resources.stories) {
     const button = element('button', 'role-story-button', metadata.title || '角色剧情');
-    const incomplete = currentSession.profile.requiresCompleteStories && metadata.complete === false;
-    if (incomplete) { button.disabled = true; button.textContent += ' · 尚未完整'; }
+    const missing = metadata.downloaded === false;
+    const incomplete = currentSession.profile.requiresCompleteStories && metadata.complete === false && metadata.playable !== true;
+    if (missing || incomplete) { button.disabled = true; button.textContent += missing ? ' · 未下载' : ' · 尚未完整'; }
     button.addEventListener('click', () => openStory(metadata));
     const row = element('div', 'role-story-row'); row.append(button);
-    if (incomplete) row.append(element('span', 'note', '脚本 ' + (metadata.segments || 0) + '/' + (metadata.expectedSegments || '?') + ' 段 · 缺少 ' + (metadata.missingAssets ?? '?') + ' 项资源，可点击“下载剧情”补齐。'));
+    if (incomplete && !missing) row.append(element('span', 'note', (metadata.expectedSegments ? '脚本 ' + (metadata.segments || 0) + '/' + metadata.expectedSegments + ' 段 · ' : '') + '缺少 ' + (metadata.missingAssets ?? '?') + ' 项播放资源，可更新剧情补齐。'));
+    if (metadata.complete === false && metadata.playable === true && !missing) row.append(element('span', 'note', '缺少 ' + metadata.missingAssets + ' 项音频，仍可播放；更新剧情可重试。'));
+    if (metadata.kind === 'audio') row.append(element('span', 'note', '语音短篇'));
     if (metadata.script) {
       const link = element('a', 'script-link', '下载演出脚本');
       link.href = asset(metadata.script); link.download = metadata.id + '.' + (metadata.scriptFormat || 'csv'); row.append(link);
@@ -541,8 +549,10 @@ function updateGetButtons() {
   gameView?.setBusy(collectionRunning);
   $('discover-characters').disabled = collectionRunning || !library;
   $('discovery-submit').disabled = collectionRunning || !library;
-  $('discovery-submit').textContent = collectionRunning && collectionJob?.type === 'catalog' ? '正在拉取…' : '开始拉取';
+  const verb = currentSession?.profile.catalogHarImport ? '导入' : '拉取';
+  $('discovery-submit').textContent = collectionRunning && collectionJob?.type === 'catalog' ? '正在' + verb + '…' : '开始' + verb;
   $('discovery-ids').disabled = collectionRunning;
+  $('discovery-har').disabled = collectionRunning;
   const resources = selectedRole ? roleContent(library, selectedRole) : null;
   const downloadRole = selectedRole && (currentSession.profile.downloadCharacter?.(selectedRole) || selectedRole);
   const jobScope = collectionJob?.scope || (collectionJob?.voicesOnly ? 'voices' : 'all');
@@ -551,7 +561,7 @@ function updateGetButtons() {
     if (!label) { button.hidden = true; return; }
     button.hidden = false;
     const savedFrom = currentSession.profile.scopes[scope].savedFrom || [scope];
-    const saved = scope === 'all' ? downloadRole?.collected : savedFrom.some(kind => resources?.[kind]?.length) || scope === 'cg' && combinedCg() && resources?.motions.length;
+    const saved = scope === 'all' ? downloadRole?.collected : savedFrom.some(kind => resources?.[kind]?.some(item => item.downloaded !== false)) || scope === 'cg' && combinedCg() && resources?.motions.length;
     button.disabled = collectionRunning || !downloadRole || scope === 'cg' && (currentSession.profile.features.rarity || currentSession.profile.requireCgAvailability) && !downloadRole.cgAvailable
       || scope === 'motions' && downloadRole.cgAvailable === false || scope === 'voices' && downloadRole.voiceAvailable === false;
     if (scope === 'stories' && downloadRole?.storyAvailable === false) button.disabled = true;
@@ -635,9 +645,22 @@ async function loadLibrary(session = currentSession) {
   library = session.library; favorites = session.favorites; applyRoute(); return true;
 }
 function discoverySummary(state) {
+  if (currentSession.profile.discoveryIds === false) return '角色列表已更新，新增 ' + (state.added || 0) + ' 项角色或样式。';
+  if (currentSession.profile.catalogHarImport) return '导入完成，新增 ' + (state.added || 0) + ' 位角色。';
   if (currentSession.profile.groupedCharacters) return '目录已更新' + (state.assetVersion ? '至 ' + state.assetVersion : '') + '，新增 ' + (state.added || 0) + ' 项角色或皮肤资源。';
   return '拉取完成，新增 ' + (state.added || 0) + ' 位角色。';
 }
+function renderHarFile(file?: File) {
+  $('discovery-har-picker').classList.toggle('has-file', !!file);
+  $('discovery-har-name').textContent = file?.name || '选择 HAR 文件';
+  $('discovery-har-name').title = file?.name || '';
+  $('discovery-har').title = file?.name || '选择本地 HAR 文件';
+  $('discovery-har-meta').textContent = file
+    ? (file.size < 1024 ** 2 ? Math.max(1, Math.ceil(file.size / 1024)) + ' KB' : (file.size / 1024 ** 2).toFixed(1) + ' MB') + ' · 本地文件'
+    : '支持 .har / .json · 点击浏览本地文件';
+  $('discovery-har-action').textContent = file ? '重新选择 ↗' : '选择文件 ↗';
+}
+$('discovery-har').addEventListener('change', () => renderHarFile($('discovery-har').files?.[0]));
 function renderDiscoveryResult(state = collectionJob) {
   if (!$('discovery-dialog').open) return;
   const valid = state?.type === 'catalog'; $('discovery-result').hidden = !valid;
@@ -652,27 +675,39 @@ function renderDiscoveryResult(state = collectionJob) {
   $('discovery-warning').hidden = !warnings.length; $('discovery-warning').textContent = warnings.join('\n');
   for (const id of state.addedIds || []) {
     const character = library?.characters.find(character => character.id === (library.aliases?.[id] || id)); if (!character) continue;
-    const button = element('button', 'secondary-button', character.name + (character.id !== id ? ' · 皮肤 ' : ' · ') + id);
-    button.addEventListener('click', () => { $('discovery-dialog').close(); openRole(character); }); $('discovery-roles').append(button);
+    const style = character.styles?.find(style => style.id === id);
+    const button = element('button', 'secondary-button', style ? style.name + ' · ' + id : character.name + (character.id !== id ? ' · 皮肤 ' : ' · ') + id);
+    button.addEventListener('click', () => { if (style) character.activeStyleId = id; $('discovery-dialog').close(); openRole(character); }); $('discovery-roles').append(button);
   }
 }
 $('discover-characters').addEventListener('click', () => {
   if (!currentSession?.profile.features.discovery || collectionRunning) return;
-  openDialog($('discovery-dialog')); renderDiscoveryResult(); $('discovery-ids').focus();
+  openDialog($('discovery-dialog')); renderDiscoveryResult();
+  (currentSession.profile.catalogHarImport ? $('discovery-har') : currentSession.profile.discoveryIds === false ? $('discovery-submit') : $('discovery-ids')).focus();
 });
 $('discovery-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (!currentSession?.profile.features.discovery || collectionRunning) return;
   const session = currentSession, generation = gameGeneration;
+  const file = session.profile.catalogHarImport ? $('discovery-har').files?.[0] : null;
   clearTimeout(polling); statusGeneration++;
-  session.discoveryIds = $('discovery-ids').value;
+  session.discoveryIds = session.profile.discoveryIds === false ? '' : $('discovery-ids').value;
   session.collection.begin(); collectionRunning = true; collectionJob = { type: 'catalog', state: 'running', scope: 'catalog', phase: 'catalog', roles: [] };
   updateGetButtons(); renderDiscoveryResult();
   try {
-    const response = await fetch(session.path + 'api/discover', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: session.discoveryIds }) });
+    let payload: any = { ids: session.discoveryIds };
+    if (session.profile.catalogHarImport) {
+      if (!file) throw new Error('请先选择千年战争的 HAR 文件。');
+      if (file.size > 512 * 1024 ** 2) throw new Error('HAR 文件超过 512 MiB，请只记录进入游戏时的请求后重新导出。');
+      let har;
+      try { har = JSON.parse((await file.text()).replace(/^\uFEFF/, '')); }
+      catch { throw new Error('HAR 文件不是有效的 JSON。'); }
+      payload = { har: session.profile.selectCatalogHar(har) };
+    }
+    const response = await fetch(session.path + 'api/discover', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const job = await response.json();
     if (!response.ok) throw new Error(job.error === '这款游戏暂不支持拉取新角色。'
-      ? '后台尚未加载拉取功能，请重启项目服务后再试。' : job.error || '拉取新角色失败。');
+      ? '后台尚未加载拉取功能，请重启项目服务后再试。' : job.error || '角色清单更新失败。');
     session.collection.observe(job); if (generation !== gameGeneration) return;
     collectionJob = job; await pollStatus(session);
   } catch (error) {
@@ -695,7 +730,7 @@ async function pollStatus(session = currentSession) {
     if (state) {
       const phase = { ui: '播放器 UI', client: '公开客户端配置', version: '游戏资源版本', catalog: '角色清单', icons: '角色头像', scripts: '剧情', indexing: '素材引用', cg: session.profile.features.stories ? 'CG 与剧情素材' : 'CG', motions: motionLabel(), portraits: '立绘', voices: '角色语音', extracting: '角色内容' }[state.phase] || session.profile.scopes[state.scope || 'all']?.label || '资源';
       $('collection-title').textContent = collectionRunning
-        ? state.type === 'catalog' ? '正在拉取' + session.profile.label + '的新角色 · ' + phase : '正在获取角色 ' + (state.roles || []).join('、') + ' 的' + phase
+        ? state.type === 'catalog' ? '正在' + (session.profile.catalogHarImport ? '导入' : '拉取') + session.profile.label + '的角色清单 · ' + phase : '正在获取角色 ' + (state.roles || []).join('、') + ' 的' + phase
         : { ready: '资源已更新', partial: '部分资源未完成', failed: '下载失败', interrupted: '下载已中断' }[state.state] || '任务已结束';
       const total = (state.phase === 'voices' ? state.voiceTargets : ['cg', 'motions'].includes(state.phase) ? state.mediaTargets : state.phase === 'portraits' ? state.portraitTargets : state.targets) ?? state.targets;
       const done = (state.phase === 'voices' ? state.voiceChecked : ['cg', 'motions'].includes(state.phase) ? state.mediaChecked : state.phase === 'portraits' ? state.portraitChecked : state.checked) ?? state.checked;

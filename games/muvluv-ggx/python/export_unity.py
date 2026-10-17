@@ -152,7 +152,7 @@ def export_spine(env, request, root):
 def export(request, root, env):
     objects = list(env.objects)
     obj = matching_object(env, request)
-    if request['kind'] == 'motions' or request['address'].startswith('SCS/'):
+    if request['kind'] == 'motions' or request['address'].startswith(('SCS/', 'SBC/')):
         return export_spine(env, request, root)
     if obj.type.name in ('GameObject', 'Sprite'):
         if obj.type.name == 'GameObject':

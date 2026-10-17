@@ -10,6 +10,8 @@ const { spinePlacement } = require('../viewer/reader-scene.ts');
 const { ensureVoiceMapping, roleVoiceSpecs, syncCachedVoices } = require('./character-voices.ts');
 const { wantsDependency } = require('./collection-scope.ts');
 const { mergeCharacterName } = require('./character-metadata.ts');
+const { readStoryUi } = require('./story-ui.ts');
+const { prepareLibrary } = require('../viewer/character-content.ts');
 // A download may rebuild files while another tab is already reading them.
 function saveFile(file, bytes) { fs.writeFileSync(file + '.tmp', bytes); renameFileSync(file + '.tmp', file); }
 const upsert = (items, item) => {
@@ -20,6 +22,7 @@ const upsert = (items, item) => {
 function extract(root, progress: (...args: any[]) => any = () => {}, { scope = 'all', roles }: any = {}) {
   const pack = loadPack(path.join(root, 'cache'));
   const catalog = ensureCatalog(root);
+  const storyUi = readStoryUi(root);
   const owner = id => baseId(id, catalog);
   const scoped = scope !== 'all';
   const selected = scoped ? new Set<string>((roles || []).map(owner)) : readSelection(root, catalog);
@@ -30,7 +33,9 @@ function extract(root, progress: (...args: any[]) => any = () => {}, { scope = '
   const voiceMapping = scope === 'all' ? ensureVoiceMapping(root, { manifest: pack.manifest }) : null;
   const out = path.join(root, 'library');
   for (const folder of ['images', 'audio', 'stories', 'spine']) fs.mkdirSync(path.join(out, folder), { recursive: true });
-  const index = scoped ? JSON.parse(fs.readFileSync(path.join(out, 'index.json'), 'utf8')) : { version: 3, aliases: catalog.aliases, source: 'Flower Knight CDN resources', characters: catalog.characters.map(item => ({ ...item, hasDynamicCg: !!item.hasDynamicCg, collected: selected.has(item.id), stories: [] })),
+  const indexFile = path.join(out, 'index.json');
+  const previous = fs.existsSync(indexFile) ? JSON.parse(fs.readFileSync(indexFile, 'utf8')) : null;
+  const index = scoped ? previous : { version: 3, aliases: catalog.aliases, source: 'Flower Knight CDN resources', characters: catalog.characters.map(item => ({ ...item, hasDynamicCg: !!item.hasDynamicCg, collected: selected.has(item.id), stories: [] })),
     images: [], audio: [], stories: [], skeletons: [], issues: [], unidentifiedIcons: catalog.unknownIcons };
   index.aliases = catalog.aliases;
   const excludedIcons = new Set<string>(catalog.excludedIconBodies || []);
@@ -173,6 +178,7 @@ function extract(root, progress: (...args: any[]) => any = () => {}, { scope = '
         complete: missing.length === 0 && story.issues.length === 0,
         missing: missing.length, issues: story.issues.length };
       story.audio = Object.fromEntries([...assets].filter(([, item]) => item.category === 'voice' || item.category === 'music').map(([url, item]) => [url, item.file]));
+      story.ui = storyUi?.file || null;
       saveFile(path.join(out, metadata.file), JSON.stringify(story));
       saveFile(path.join(out, metadata.script), bytes(record));
       upsert(index.stories, metadata);
@@ -185,6 +191,8 @@ function extract(root, progress: (...args: any[]) => any = () => {}, { scope = '
     dynamicCg: index.skeletons.filter(item => item.kind === 'cg').length, audio: index.audio.length,
     characterVoices: index.audio.filter(item => item.context === 'character').length,
     icons: index.images.filter(item => item.category === 'icon').length, issues: index.issues.length };
+  prepareLibrary(index, catalog, previous);
+  index.storyUi = storyUi;
   index.generated = new Date().toISOString();
   if (voiceMapping) syncCachedVoices(root, { mapping: voiceMapping, index, persist: false });
   const file = path.join(out, 'index.json'); fs.writeFileSync(file + '.tmp', JSON.stringify(index)); renameFileSync(file + '.tmp', file);

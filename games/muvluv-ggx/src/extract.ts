@@ -35,8 +35,11 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
     requests.push({ address, kind, internalId: spec.internalId, type: spec.type, ...input });
   }
   for (const character of catalog.characters.filter(item => !roles || roles.includes(item.id))) {
-    if (scope !== 'ui' && character.icon) queue(character.icon, 'icons');
-    if (['all', 'portraits'].includes(scope)) character.portraits.forEach(address => queue(address, 'portraits'));
+    if (['all', 'catalog', 'portraits'].includes(scope)) {
+      Object.values<string>(character.portal || {}).filter(Boolean).forEach(address => queue(address, 'portal'));
+      character.portraits.forEach(address => queue(address, 'portraits'));
+    }
+    if (['all', 'portraits'].includes(scope)) (character.cardPortraits || []).forEach(address => queue(address, 'portraits'));
     if (['all', 'cg', 'motions'].includes(scope)) { if (scope !== 'motions') character.cg.forEach(address => queue(address, 'cg')); character.motions.forEach(address => queue(address, 'motions')); }
     if (['all', 'voices'].includes(scope)) character.voices.forEach(voice => queue(voice.address, 'voices'));
   }
@@ -71,22 +74,26 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
   };
   for (const character of catalog.characters) {
     const icon = knownImage(character.icon, character.id, 'icon');
-    const portraits = character.portraits.flatMap(address => {
+    const portraits = [...character.portraits, ...(character.cardPortraits || [])].flatMap(address => {
+      const card = address.startsWith('SBC/'), label = card ? '动态卡面' : '衣装立绘', phase = card ? 'card' : 'stand';
       const model = saved(address)?.model;
       if (model) {
-        const item = { ...model, id: sha256(Buffer.from(character.id + ':' + address)), character: character.id, kind: 'portrait', resource: address, label: '角色立绘' };
+        const item = { ...model, id: sha256(Buffer.from(character.id + ':' + address)), character: character.id, kind: 'portrait', resource: address, label, still: !card };
         index.skeletons.push(item);
-        return [{ phase: 'base', label: '角色立绘', model: item.id, file: model.file, resource: address }];
+        return [{ phase, label, model: item.id, file: model.file, resource: address }];
       }
-      const image = knownImage(address, character.id, 'portrait'); return image ? [{ phase: 'base', label: '角色立绘', file: image.file, resource: address }] : [];
+      const image = knownImage(address, character.id, 'portrait'); return image ? [{ phase, label, file: image.file, resource: address }] : [];
     });
     const cg = character.cg.flatMap(address => { const image = knownImage(address, character.id, 'cg'); return image ? [image] : []; });
     const motions = character.motions.flatMap(address => { const model = saved(address)?.model; if (!model) return []; const item = { ...model, id: sha256(Buffer.from(character.id + ':' + address)), character: character.id, kind: 'cg', resource: address, label: '动态 CG' }; index.skeletons.push(item); return [item]; });
     for (const voice of character.voices) {
       const audio = saved(voice.address)?.audio; if (audio) index.audio.push({ ...audio, ...voice, resource: voice.address, id: sha256(Buffer.from(character.id + ':' + voice.address)), character: character.id, context: 'character', category: 'character-voice' });
     }
-    index.characters.push({ id: character.id, name: character.name, rarityId: character.rarityId, rarityLabel: character.rarityLabel, icon: icon?.file || null,
-      portraits, cg, motions: motions.map(model => model.id), hasDynamicCg: motions.length > 0, portraitTotal: character.portraits.length,
+    const portal = Object.fromEntries(Object.entries<string>(character.portal || {}).map(([key, address]) => [key, knownImage(address, character.id, 'portal')?.file || null]));
+    index.characters.push({ id: character.id, name: character.name, personId: character.personId, parentPersonId: character.parentPersonId, shortName: character.shortName, subtitle: character.subtitle,
+      styleOrder: character.styleOrder, profile: character.profile, portal, portraitResourceId: character.portraitResourceId,
+      rarityId: character.rarityId, rarityLabel: character.rarityLabel, icon: icon?.file || null,
+      portraits, cg, motions: motions.map(model => model.id), hasDynamicCg: character.motions.length > 0, portraitTotal: character.portraits.length + (character.cardPortraits || []).length,
       cgAvailable: character.cg.length + character.motions.length > 0, voiceAvailable: character.voices.length > 0,
       storyAvailable: catalog.scenes.some(scene => scene.character === character.id), collected: !!(portraits.length || cg.length || motions.length || index.audio.some(audio => audio.character === character.id)), stories: [] });
   }
@@ -107,6 +114,7 @@ async function extract(root, progress: (...args: any[]) => any = () => {}, { rol
     writeJson(path.join(output, file), scenario);
     writeJson(path.join(output,script),scenario.segments.flatMap(id=>readJson(path.join(root,'metadata/scene-'+id+'.json'),[])));
     const metadata = { id: scenario.id, title: scenario.title || '已保存剧情', character: scenario.character, characters: [scenario.character], file, script, scriptFormat: 'json', format: 'muvluv', adult: scenario.adult,hasCg:true,programVersion:2,complete:scenario.complete,segments:scenario.segments.length,
+      expectedSegments: scenario.expectedSegments.length, missingAssets: scenario.missingAssets.length,
       dialogue: scenario.commands.filter(command => command.command === 'mess').length, voiceFiles: Object.values<any>(scenario.voices) };
     index.stories.push(metadata);
     for (const character of index.characters) if (scenario.character===character.id) { character.stories.push(scenario.id); character.storyAvailable = true; character.collected = true; }

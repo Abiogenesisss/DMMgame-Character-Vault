@@ -26,9 +26,7 @@
 .dotabyss-native-log-list{pointer-events:auto!important;overscroll-behavior:contain;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#c9dced #1b2033}
 .dotabyss-log-line{width:100%;border:0;padding:0;margin:0 0 calc(36*var(--native-unit));cursor:pointer;outline:0;pointer-events:auto}
 .dotabyss-log-line:focus-visible{outline:2px solid #65f5f5;outline-offset:-3px}
-.dotabyss-reader-footer{display:flex;justify-content:flex-end;gap:16px;align-items:center;min-height:58px;padding-top:13px}
-.dotabyss-reader-footer .dotabyss-control{display:block;width:38px;height:38px;padding:0;border:0;border-radius:0;background:transparent center/contain no-repeat;cursor:pointer;flex:0 0 auto}
-.dotabyss-reader-footer .dotabyss-control:focus-visible{outline:2px solid #65f5f5;outline-offset:3px}
+.dotabyss-reader-footer{color:#e7dded}
 .dotabyss-position{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .dotabyss-error{position:absolute;inset:0;z-index:20;display:grid;place-items:center;padding:10%;background:#11131ef2;color:#fff;text-align:center;font-size:15px;cursor:default}
 .dotabyss-error[hidden]{display:none}.dotabyss-load-error{padding:40px;text-align:center;color:#f4d6d6}
@@ -38,6 +36,6 @@
 .dotabyss-actor-body{position:relative;pointer-events:none}
 .dotabyss-scene-image{position:absolute;pointer-events:none;transform-origin:50% 50%}
 .dotabyss-text-overlay{position:absolute;inset:18% 10%;color:#fff;display:grid;place-items:center;font-size:calc(42*var(--native-unit));text-shadow:0 2px 3px #000;white-space:pre-wrap;text-align:center;pointer-events:none}
-@media(max-width:620px){#story-dialog[data-story-engine=dotabyss]{width:calc(100vw - 12px)}.dotabyss-reader-footer{min-height:42px;padding-top:10px;gap:12px}.dotabyss-reader-footer .dotabyss-control{width:30px;height:30px}.dotabyss-stage{outline-width:3px;box-shadow:0 0 0 5px #45255c}}
+@media(max-width:620px){#story-dialog[data-story-engine=dotabyss]{width:calc(100vw - 12px)}.dotabyss-stage{outline-width:3px;box-shadow:0 0 0 5px #45255c}}
 
 .dotabyss-skins{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}.role-skins-label{margin-right:8px;color:var(--muted);font-size:13px}

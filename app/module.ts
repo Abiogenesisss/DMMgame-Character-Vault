@@ -14,6 +14,7 @@ export interface ServiceOptions {
 }
 export interface GameService { handle(request: Request): Promise<Response | null>; }
 export interface GameAdapter {
+  catalogHarImport?: boolean;
   createService(options: ServiceOptions): GameService;
   createDiscoveryService?(options: ServiceOptions): GameService;
   extract(root: string, progress: (state: unknown) => void): Promise<unknown> | unknown;

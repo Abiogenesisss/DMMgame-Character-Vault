@@ -12,6 +12,28 @@ const uniqueFiles = items => {
   return [...files.values()];
 };
 
+// Capability belongs to a character even when its media has not been saved.
+// Repair older indexes from metadata and indexed model/story associations only.
+function prepareLibrary(library, ...evidence) {
+  const animated = new Set<string>();
+  const add = (id, source) => { const canonical = baseId(baseId(id, source), library); if (canonical) animated.add(canonical); };
+  for (const source of [library, ...evidence].filter(Boolean)) {
+    const stories = new Set((source.stories || []).filter(story => story.motions?.length).map(story => story.id));
+    for (const character of source.characters || []) {
+      if (typeof character === 'string') add(character, source);
+      else if (character.hasDynamicCg === true || character.stories?.some(id => stories.has(id))) add(character.id, source);
+    }
+    for (const model of source.skeletons || []) if (model.kind === 'cg') {
+      for (const id of [model.parent, model.character, ...(model.characters || [])]) add(id, source);
+    }
+    for (const story of source.stories || []) if (story.motions?.length) {
+      for (const id of [story.parent, story.character, ...(story.characters || [])]) add(id, source);
+    }
+  }
+  for (const character of library.characters || []) if (animated.has(character.id)) character.hasDynamicCg = true;
+  return library;
+}
+
 function catalogCharacters(library, { tab = 'characters', favorites = new Set<string>(), query = '', availability = 'all', dynamicOnly = false, rarity = 'all' }: any = {}) {
   const search = query.trim().toLowerCase();
   const canonicalFavorites = new Set([...favorites].map(id => baseId(id, library)));
@@ -76,4 +98,4 @@ function routeHash(tab, id = null, section = 'presentation') {
   return id ? '#' + page + '/' + id + '/' + (CHARACTER_SECTIONS.includes(section) ? section : 'presentation') : '#' + page;
 }
 
-export { CATALOG_PAGES, CHARACTER_SECTIONS, catalogCharacters, roleContent, portraitStatus, readFavorites, readRoute, routeHash };
+export { CATALOG_PAGES, CHARACTER_SECTIONS, prepareLibrary, catalogCharacters, roleContent, portraitStatus, readFavorites, readRoute, routeHash };

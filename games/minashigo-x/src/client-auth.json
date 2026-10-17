@@ -1,0 +1,10 @@
+{
+  "native": {
+    "key": "1fp4XjN0BgJlXIFebfQXOzf3LLgNyD9GY",
+    "secret": "uP4ySAb80KrPfYhOESIkZSezhxwAy7ItTQksjzZeemVPQTL3WDqaJqMLv1f5Z6NqOG828ns4eLIOHfAqYPWdlkGyFowevPowP0mrDw1zEZC9iC8x890SHfAayqJpdBirIc5sQSGNigmfSiDV5eDszaSqOBSf1LhmVjaooCyUnyDw"
+  },
+  "web": {
+    "key": "jFxXF3M0n4P056yfXtogRRjkZpWFTm52",
+    "secret": "Ti60QlOqMur6trRkQY64xJkpRm47BupdPVM7bw5udWBxXPEQKGDraAmeO0y062DT2oVbSkbYbV0vWlSUe7y5OpVEwnqiMbyWHhqQA6ycS6utzRiCtHos9YDDjJ94JXuaBK7u0SGAjo1HK4pv4w5yegGBo3t1LyGICWAQ6XWxq82O"
+  }
+}

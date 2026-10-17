@@ -21,7 +21,7 @@ function runExtraction(root, progress) {
     });
   });
 }
-function createService({ root, origin, fetchResource }) {
+function createService({ root, origin, fetchResource, prepareUi }: any) {
   return { async handle(request) {
     const url = new URL(request.url);
     if (url.origin !== origin || !url.pathname.startsWith('/api/')) return null;
@@ -49,7 +49,7 @@ function createService({ root, origin, fetchResource }) {
       try { save(initial); }
       catch (error) { release(); throw error; }
       Promise.resolve().then(async () => {
-        try { await require('./collect.ts').collect(root, { roles: [payload.id], retryMissing: payload.retryMissing === true, scope, fetchResource }); }
+        try { await require('./collect.ts').collect(root, { roles: [payload.id], retryMissing: payload.retryMissing === true, scope, fetchResource, prepareUi }); }
         catch (error) { save({ state: 'failed', roles: [payload.id], scope, error: error.message, finished: new Date().toISOString() }); }
         finally { release(); }
       }).catch(error => console.error(error.message));

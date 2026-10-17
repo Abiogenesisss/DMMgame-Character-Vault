@@ -36,7 +36,7 @@ body[data-game="girls-creation"] .character-card[data-kind="impression"] .charac
 .gc-native-icon{width:50%;height:50%;background-repeat:no-repeat;transform:translateY(calc(-4 * var(--gc-unit)))}.gc-native-next{position:absolute;right:calc(90 * var(--gc-unit));bottom:calc(42 * var(--gc-unit));width:calc(20 * var(--gc-unit));height:calc(30 * var(--gc-unit));padding:0;border:0;background:transparent;cursor:pointer;animation:gc-next-float 1.6s ease-in-out infinite}.gc-native-next:disabled{opacity:.35;animation:none}
 @keyframes gc-next-float{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(-4 * var(--gc-unit)))}}
 @media(prefers-reduced-motion:reduce){.gc-native-next{animation:none}}
-.gc-story-footer{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:10px 16px;background:#fff;color:var(--muted)}.gc-story-footer button{min-height:34px;padding:6px 12px;font-size:12px}.gc-story-position{margin-right:auto;font-size:12px;font-variant-numeric:tabular-nums}
+.gc-story-footer{background:#fff;color:var(--muted)}
 .gc-native-modal{position:absolute;inset:3% 1%;z-index:20;display:flex;flex-direction:column;padding:calc(58 * var(--gc-unit)) calc(58 * var(--gc-unit)) calc(32 * var(--gc-unit));background:#eeeeeef5;border:1px solid #aaa79b;border-radius:calc(24 * var(--gc-unit));cursor:default;font-size:calc(32 * var(--gc-unit));overflow:auto}
 .gc-modal-open>.gc-story-background,.gc-modal-open>.gc-story-actors,.gc-modal-open>.gc-story-motion,.gc-modal-open>.gc-native-ui{filter:blur(6px);pointer-events:none}
 .gc-modal-footer{display:flex;justify-content:center;gap:calc(40 * var(--gc-unit));margin-top:auto;padding-top:calc(24 * var(--gc-unit));flex-shrink:0}

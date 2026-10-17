@@ -18,8 +18,19 @@ const fakeIpHosts = new Set([
   'api-game.muvluv-girls-garden.com',
   'cdn-r18.gc.dmmgames.com',
   'www-r18.gc.dmmgames.com',
-  'd3mya90gbacu0m.cloudfront.net'
+  'd3mya90gbacu0m.cloudfront.net',
+  'minasigo-no-shigoto-pd-c-res.orphans-order.com',
+  'minasigo-no-shigoto-pd-r-client.orphans-order.com',
+  'minasigo-no-shigoto-web-r-server.orphans-order.com',
+  'minasigo-no-shigoto-app-g-server.orphans-order.com'
 ]);
+
+// Exact guest bootstrap/renewal or read-only lookup endpoints only. This never
+// permits gameplay, story-read/reward changes or account linking.
+const guestSessionUrls = new Set(['getHelloToken', 'registerGuestAccount', 'getAccessToken']
+  .map(action => 'https://api-game.muvluv-girls-garden.com/api/Account/' + action));
+guestSessionUrls.add('https://minasigo-no-shigoto-web-r-server.orphans-order.com/mnsg/story/getStoryResource');
+guestSessionUrls.add('https://minasigo-no-shigoto-app-g-server.orphans-order.com/mnsg/user/login');
 
 // Conservatively exclude special-purpose IPv6, including 6to4/Teredo which can
 // embed a private IPv4 destination. BlockList also handles expanded spellings.
@@ -48,9 +59,11 @@ function isFakeIpAddress(address) {
   return a === 198 && (b === 18 || b === 19);
 }
 
-async function fetchPublicResource(input, { signal, headers = {} }: any = {}) {
+async function fetchPublicResource(input, { signal, headers = {}, method = 'GET', body }: any = {}) {
   const url = new URL(input);
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('只支持无账号凭据的 HTTP(S) 资源地址。');
+  if (method !== 'GET' && !(method === 'POST' && guestSessionUrls.has(url.href))) throw new Error('该资源地址不支持此请求方式。');
+  if (body != null && (method !== 'POST' || typeof body !== 'string' || Buffer.byteLength(body) > 16384)) throw new Error('资源请求正文无效或超过大小限制。');
   const hostname = url.hostname.replace(/^\[|\]$/g, '');
   const literal = net.isIP(hostname);
   const resolved = literal ? [{ address: hostname, family: literal }] : await dns.lookup(hostname, { all: true });
@@ -67,9 +80,12 @@ async function fetchPublicResource(input, { signal, headers = {} }: any = {}) {
   const requestHeaders = new Headers(headers);
   requestHeaders.set('host', url.host);
   requestHeaders.set('accept-encoding', 'identity');
+  requestHeaders.delete('transfer-encoding');
+  if (method === 'POST') requestHeaders.set('content-length', String(body == null ? 0 : Buffer.byteLength(body)));
+  else requestHeaders.delete('content-length');
   return new Promise<Response>((resolve, reject) => {
     const request = (url.protocol === 'https:' ? https : http).request(url, {
-      method: 'GET', agent: false, signal, headers: Object.fromEntries(requestHeaders),
+      method, agent: false, signal, headers: Object.fromEntries(requestHeaders),
       ...(url.protocol === 'https:' ? { rejectUnauthorized: true, ...(!literal ? { servername: hostname } : {}) } : {}),
       // Pin the validated addresses for this connection; do not resolve the host again.
       lookup: (_host, options, callback) => options.all
@@ -89,7 +105,7 @@ async function fetchPublicResource(input, { signal, headers = {} }: any = {}) {
         resolve(new Response(Readable.toWeb(stream), { status: response.statusCode, headers }));
       } catch (error) { response.destroy(); reject(error); }
     });
-    request.on('error', reject); request.end();
+    request.on('error', reject); request.end(body);
   });
 }
 export { fetchPublicResource, isPublicAddress };

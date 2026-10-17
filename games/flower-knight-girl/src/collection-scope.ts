@@ -5,7 +5,8 @@ const COLLECTION_SCOPES = {
   cg: { label: 'CG', phase: 'indexing' },
   motions: { label: '动态 CG', phase: 'indexing' },
   stories: { label: '剧情', phase: 'scripts' },
-  voices: { label: '角色语音', phase: 'voices' }
+  voices: { label: '角色语音', phase: 'voices' },
+  ui: { label: '播放器 UI', cachedLabel: '检查播放器 UI', phase: 'ui' }
 };
 function collectionScope({ scope, voicesOnly }: any = {}) {
   if (voicesOnly !== undefined && typeof voicesOnly !== 'boolean') throw new Error('语音获取选项有误。');

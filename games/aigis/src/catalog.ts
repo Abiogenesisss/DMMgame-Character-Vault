@@ -9,25 +9,9 @@ const { canonicalId } = require('./character-identity.ts');
 const { attachRarities } = require('./rarity.ts');
 const { isGamePortrait } = require('./portraits.ts');
 const { attachArtists, cachedArtistMetadata, readArtistMetadata } = require('./artists.ts');
+const { parseFileList } = require('./file-list.ts');
 const RARITY_SOURCE = 'https://raw.githubusercontent.com/Altterisk/Aigis-Enemy/main/public/data/units.json';
 const PHASES = ['基础立绘', '觉醒立绘', '第二觉醒 A', '第二觉醒 B'];
-function parseFileList(input) {
-  let text;
-  if (typeof input === 'string') text = input;
-  else for (let key = 0; key < 256; key++) {
-    const prefix = Buffer.from(input.subarray(0, 256)); for (let i = 0; i < prefix.length; i++) prefix[i] ^= key;
-    if (!/[a-f0-9]{40},[a-z0-9]{32},\d,\d{12},/.test(prefix.toString())) continue;
-    const decoded = Buffer.from(input); for (let i = 0; i < decoded.length; i++) decoded[i] ^= key;
-    text = new TextDecoder('utf-8', { fatal: true }).decode(decoded); break;
-  }
-  if (!text) throw new Error('无法识别千年战争资源清单。');
-  const entries = text.trim().split(/\r?\n/).map(line => {
-    const match = /^([a-f0-9]{40}),([a-z0-9]{32}),\d,(\d{12}),([A-Za-z0-9_.-]+)$/.exec(line);
-    if (!match || match[4] === '..') throw new Error('千年战争资源清单包含无效记录。');
-    return { name: match[4], url: BASE + match[1] + '/' + match[2], size: Number(match[3]) };
-  });
-  return { text, entries };
-}
 function cachedRecord(root, url) {
   return loadPack(path.join(root, 'cache')).manifest.routes[routeKey('GET', url)]?.findLast(record => record.status === 200 && fs.existsSync(path.join(root, 'cache/bodies', record.body))) || null;
 }

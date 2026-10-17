@@ -97,6 +97,13 @@ export interface PageElements {
   'discovery-game': HTMLElementTagNameMap['small'];
   'discovery-title': HTMLElementTagNameMap['h2'];
   'discovery-form': HTMLElementTagNameMap['form'];
+  'discovery-ids-field': HTMLElementTagNameMap['div'];
+  'discovery-har-field': HTMLElementTagNameMap['div'];
+  'discovery-har': HTMLElementTagNameMap['input'];
+  'discovery-har-picker': HTMLElementTagNameMap['div'];
+  'discovery-har-name': HTMLElementTagNameMap['strong'];
+  'discovery-har-meta': HTMLElementTagNameMap['small'];
+  'discovery-har-action': HTMLElementTagNameMap['span'];
   'discovery-ids': HTMLElementTagNameMap['textarea'];
   'discovery-hint': HTMLElementTagNameMap['p'];
   'discovery-submit': HTMLElementTagNameMap['button'];

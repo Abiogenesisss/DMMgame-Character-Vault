@@ -8,6 +8,9 @@ export ={...{
   "roleDescription": "立绘与 CG 鉴赏",
   "note": "基础与觉醒立绘归在同一角色中。点 ☆ 可加入收藏。",
   "glyph": "◇",
+  "catalogHarImport": true,
+  "selectCatalogHar": require('../src/catalog-har.ts').selectCatalogHar,
+  "discoveryHint": "请自行在浏览器网络面板禁用缓存，重新进入千年战争，再导出包含响应内容的 HAR。这里仅离线解析包内的角色清单和名称表，无需逐个打开角色。",
   "features": {
     "presentation": true,
     "sections": false,
@@ -15,7 +18,8 @@ export ={...{
     "stories": false,
     "motions": false,
     "rarity": true,
-    "artists": true
+    "artists": true,
+    "discovery": true
   },
   "rarities": [
     {

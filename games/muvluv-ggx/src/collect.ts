@@ -3,7 +3,7 @@ const fs = require('node:fs'), path = require('node:path');
 const { downloadUrls } = require('../../../app/download.ts');
 const { fetchPublicResource } = require('../../../app/public-fetch.ts');
 const { resourceKind } = require('./format.ts');
-const { readCatalog, readJson, writeJson } = require('./catalog.ts');
+const { readCatalog, prepareCatalog, readJson, writeJson } = require('./catalog.ts');
 const { ensureStoryUi } = require('./story-ui.ts');
 function collectionScope(scope = 'all') {
   if (!['all', 'catalog', 'portraits', 'cg', 'motions', 'voices', 'stories', 'ui'].includes(scope)) throw new Error('下载分类有误。');
@@ -15,9 +15,12 @@ function assetAddresses(catalog, { roles, scope = 'all' }: any = {}) {
   if (!Array.isArray(chosen) || !chosen.length || chosen.some(id => !catalog.characters.some(character => character.id === id))) throw new Error('请指定已索引的角色编号。');
   if (scope === 'ui') return [];
   const addresses = [];
+  const baseCards = new Set([...catalog.characters].sort((a, b) => (a.styleOrder ?? Number(a.id)) - (b.styleOrder ?? Number(b.id)))
+    .filter((character, index, all) => !all.slice(0, index).some(previous => (previous.personId ?? previous.id) === (character.personId ?? character.id))).map(character => character.id));
   for (const character of catalog.characters.filter(character => chosen.includes(character.id))) {
-    if (scope !== 'stories' && character.icon) addresses.push(character.icon);
-    if (['all', 'portraits'].includes(scope)) addresses.push(...character.portraits);
+    if (['all', 'catalog', 'portraits'].includes(scope)) addresses.push(...Object.values<string>(character.portal || {}).filter(Boolean));
+    if (['all', 'portraits'].includes(scope) || scope === 'catalog' && baseCards.has(character.id)) addresses.push(...character.portraits);
+    if (['all', 'portraits'].includes(scope)) addresses.push(...(character.cardPortraits || []));
     if (['all', 'cg', 'motions'].includes(scope)) addresses.push(...(scope === 'motions' ? [] : character.cg), ...character.motions);
     if (['all', 'voices'].includes(scope)) addresses.push(...character.voices.map(voice => voice.address));
   }
@@ -29,7 +32,8 @@ function assetAddresses(catalog, { roles, scope = 'all' }: any = {}) {
 }
 async function collect(root, { roles, scope = 'all', retryMissing = false, fetchResource = fetchPublicResource,
   extractResources = (...args) => require('./extract.ts').extract(...args), prepareUi = ensureStoryUi }: any = {}) {
-  scope = collectionScope(scope); const catalog = readCatalog(root); catalog.root = root;
+  scope = collectionScope(scope);
+  const catalog = scope === 'catalog' ? await prepareCatalog(root, { fetchResource }) : readCatalog(root); catalog.root = root;
   assetAddresses(catalog,{roles,scope:'catalog'});
   const file = path.join(root, 'state/muvluv-status.json'), unavailableFile = path.join(root, 'state/muvluv-unavailable.json');
   const unavailable = readJson(unavailableFile, {}), absent = new Set<string>();
@@ -57,7 +61,9 @@ async function collect(root, { roles, scope = 'all', retryMissing = false, fetch
     writeJson(unavailableFile, unavailable);
     const index = await extractResources(root, undefined, { roles, scope });
     const issues = (index.issues || []).filter(issue => !roles || roles.includes(issue.character));
-    const errors = [...scripts.errors,...result.errors.filter(error => !absent.has(error.url))];
+    const incomplete = ['all', 'stories'].includes(scope) ? (index.stories || []).filter(story => story.complete === false && (!roles || roles.includes(story.character)))
+      .map(story => ({ character: story.character, scene: story.id, error: '剧情尚未完整：已保存 ' + story.segments + '/' + story.expectedSegments + ' 段脚本，缺少 ' + story.missingAssets + ' 项播放资源。' })) : [];
+    const errors = [...scripts.errors,...result.errors.filter(error => !absent.has(error.url)), ...incomplete];
     Object.assign(state, { state: errors.length || issues.length ? 'partial' : 'ready', checked: ui.checked+result.done, saved: ui.saved+result.saved, skipped: ui.skipped+result.skipped,
       unavailable: state.unavailable + absent.size, failed: errors.length + issues.length, errors: [...errors, ...issues], authRequired:!!scripts.authRequired,missingSceneIds:scripts.missingSceneIds||[],stats: index.stats, finished: new Date().toISOString() });
     persist(); return state;

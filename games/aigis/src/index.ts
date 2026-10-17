@@ -50,4 +50,5 @@ function createService({ root, origin, fetchResource }) {
     return json({ error: '接口不存在。' }, 404);
   } };
 }
-export = { webRoot: path.join(__dirname, '../../../../app/viewer'), extract: runExtraction, createService };
+export = { webRoot: path.join(__dirname, '../../../../app/viewer'), extract: runExtraction, createService,
+  catalogHarImport: true, createDiscoveryService: options => require('./import-catalog.ts').createDiscoveryService(options) };

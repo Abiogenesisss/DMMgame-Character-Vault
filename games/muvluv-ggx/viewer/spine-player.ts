@@ -3,6 +3,7 @@ import { Spine } from 'pixi-spine';
 import { MosaicCapture } from './mosaic.ts';
 import { spinePlacement, fitScene } from './reader-scene.ts';
 import { loadSpine42, VaultSpine42 } from './spine42.ts';
+import { portalPlacement } from './portal-framing.ts';
 import '@pixi/unsafe-eval';
 
 const asset = file => 'library/' + file.split('/').map(encodeURIComponent).join('/');
@@ -73,7 +74,7 @@ export class Player {
 
   constructor(container) {
     this.container = container; this.generation = 0;
-    this.observer = new ResizeObserver(() => this.fit()); this.observer.observe(container);
+    this.observer = new ResizeObserver(() => { this.fit(); if (this.app && !this.app.ticker.started) this.app.renderer.render(this.app.stage); }); this.observer.observe(container);
   }
   async load(model, options: any = {}) {
     const generation = ++this.generation; this.disposeApp(); this.model = model;
@@ -98,6 +99,17 @@ export class Player {
     this.app.stage.addChild(this.scene);
     const playback = this.pendingPlayback;
     this.setAnimation(playback.name, playback.loop, playback.token); this.fit();
+    if (options.still ?? model.still) {
+      for (const spine of this.spines) spine.autoUpdate = false;
+      this.app.stop(); this.app.renderer.render(this.app.stage);
+    }
+  }
+  snapshot() {
+    if (!this.app) return null;
+    this.app.renderer.render(this.app.stage);
+    // Preserve the viewport crop, including transparent padding. Extracting the
+    // scene instead crops to each stand's bounds and changes its apparent scale.
+    return this.app.renderer.extract.canvas().toDataURL('image/png');
   }
   setAnimation(name, loop = true, token = null) {
     this.pendingPlayback = { name, loop, token };
@@ -113,6 +125,10 @@ export class Player {
     if (!this.app || !this.spine) return;
     const { width, height } = this.container.getBoundingClientRect(); if (!width || !height) return;
     this.app.renderer.resize(width, height);
+    if (this.model.fit === 'portal') {
+      const p = portalPlacement(this.scene.getLocalBounds(), width, height);
+      this.scene.scale.set(p.scale); this.scene.position.set(p.x, p.y); return;
+    }
     if(this.model.fit==='stage'){
       const p=this.placement,scale=Math.min(width/(p.frameWidth||1920),height/(p.frameHeight||1080));this.scene.scale.set(scale*(p.scale??1));this.scene.position.set(width/2+(p.x||0)*scale,height/2+(p.y||0)*scale);return;
     }
